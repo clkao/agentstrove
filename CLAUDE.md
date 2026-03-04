@@ -17,25 +17,56 @@ This is a structured port from the v0 prototype at `../agentstrove`. Proven code
 ## Project Structure
 
 ```
-cmd/agentstrove/        CLI entry point (sync, serve subcommands)
+cmd/agentstrove/        CLI entry point (sync, serve, daemon subcommands)
 internal/
-  config/               Config loading, identity detection
+  config/               Config loading, git-based identity resolution
   reader/               agentsview SQLite reader (read-only)
   secrets/              Secret detection + masking (regex-based)
-  store/                ClickHouse Store/ReadStore interfaces + implementation
-  sync/                 Sync engine: read → mask → write pipeline
+  store/
+    store.go            Domain types + Store/ReadStore interfaces
+    clickhouse.go       ClickHouse implementation (satisfies both interfaces, includes FTS)
+  sync/
+    engine.go           Read → mask → write pipeline (incremental message append)
+    watermark.go        Per-session {fileHash, lastOrdinal} tracking
+    daemon.go           fsnotify watcher + reconcile loop
   gitlinks/             Git commit/PR extraction from tool calls
   api/                  HTTP server + REST handlers
+  web/
+    embed.go            //go:embed frontend dist
 frontend/               Svelte 5 SPA
-scripts/                Build scripts, ClickHouse schema SQL
+scripts/
+  clickhouse-schema.sql Canonical ClickHouse DDL
+e2e/                    E2E tests (seeded + dogfood)
 docs/                   Project documentation
 ```
 
 ## Key Interfaces
 
-The `Store` and `ReadStore` interfaces in `internal/store/store.go` are the central abstraction. All storage access goes through these interfaces — sync engine writes to `Store`, API server reads from `ReadStore`.
+`Store` and `ReadStore` in `internal/store/store.go` are **separate** interfaces (ReadStore does NOT embed Store). The sync engine receives `Store` (write-only), the API server receives `ReadStore` (read-only). The ClickHouse implementation struct satisfies both.
 
 Every store method takes `orgID` as first parameter. In self-hosted mode this is always `""`. This makes the data model ready for multi-tenant use without schema changes.
+
+### Identity Resolution
+
+At sync time, the daemon resolves identity from git config (with config file override):
+
+- `user_id` = `git config user.email`
+- `user_name` = `git config user.name`
+- `project_path` = absolute path from agentsview
+- `project_id` = `git remote get-url origin` for that path (empty if not a git repo or no remote)
+- `project_name` = last path component of remote URL without `.git`, falling back to directory basename
+
+### Sync Strategy
+
+Incremental message append — when a session's `file_hash` (from agentsview) changes:
+
+1. Re-insert session row with `_version = unix_millis(now)` (metadata always refreshed)
+2. Insert only messages where `ordinal > lastOrdinal` (from watermark)
+3. Insert only tool calls for those new messages
+4. Re-extract and insert git links from new tool calls
+5. Update watermark: `{fileHash, lastOrdinal = max(ordinal)}`
+
+Watermark persisted as JSON at `$DATA_DIR/sync-state.json` with per-session `{fileHash, lastOrdinal}`.
 
 ## Data Model Principles
 
@@ -69,12 +100,29 @@ The v0 codebase at `../agentstrove` has working implementations of everything ex
 
 ## Build & Test
 
+### Prerequisites
+
+ClickHouse must be running for store and E2E tests. From the host:
+
+```bash
+docker compose up -d clickhouse    # starts ClickHouse on ports 8123 (HTTP) + 9440 (native)
+```
+
+From the devcontainer, tests connect via `host.docker.internal`. Set `CLICKHOUSE_ADDR` to override (default: `host.docker.internal:9440`).
+
+Each test suite creates a unique temporary database for isolation — no shared state between test runs.
+
+### Commands
+
 ```bash
 make build          # Frontend + Go binary
-make test           # go test ./internal/...
-make test-e2e       # go test ./e2e/...
+make test           # go test ./internal/... (unit tests — reader, secrets, gitlinks need no ClickHouse)
+make test-store     # go test ./internal/store/... (needs ClickHouse)
+make test-e2e       # go test ./e2e/... (needs ClickHouse)
 make test-all       # All tests
 ```
+
+See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood golden paths, and test infrastructure details.
 
 ## Auth Is a Separate Project
 
