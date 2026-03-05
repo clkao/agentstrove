@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -54,13 +55,20 @@ func NewClickHouseStoreFromOptions(opts ConnectOptions) (*ClickHouseStore, error
 		user = "default"
 	}
 
+	// Port 8443 is the standard ClickHouse HTTPS port (HTTP protocol).
+	// All other ports use native protocol.
+	proto := clickhouse.Native
+	if _, port, _ := net.SplitHostPort(opts.Addr); port == "8443" {
+		proto = clickhouse.HTTP
+	}
+
 	mkOpts := func(db string) *clickhouse.Options {
 		o := &clickhouse.Options{
 			Addr:     []string{opts.Addr},
 			Auth:     clickhouse.Auth{Database: db, Username: user, Password: opts.Password},
-			Protocol: clickhouse.Native,
+			Protocol: proto,
 		}
-		if opts.Secure {
+		if opts.Secure || proto == clickhouse.HTTP {
 			o.TLS = &tls.Config{}
 		}
 		return o
