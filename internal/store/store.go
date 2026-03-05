@@ -16,6 +16,7 @@ type Session struct {
 	ProjectID        string     `json:"project_id"`
 	ProjectName      string     `json:"project_name"`
 	ProjectPath      string     `json:"project_path"`
+	Machine          string     `json:"machine"`
 	AgentType        string     `json:"agent_type"`
 	FirstMessage     string     `json:"first_message"`
 	StartedAt        *time.Time `json:"started_at"`
