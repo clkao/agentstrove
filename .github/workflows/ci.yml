@@ -58,11 +58,13 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_PASSWORD: ci_test_pw
         ports:
           - 9000:9000
           - 8123:8123
         options: >-
-          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-cmd "clickhouse-client --password ci_test_pw --query 'SELECT 1'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -84,7 +86,7 @@ jobs:
           CGO_ENABLED: "1"
           CLICKHOUSE_ADDR: localhost:9000
           CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_PASSWORD: ci_test_pw
 
       - name: Run API tests
         run: go test ./internal/api/... -v -count=1 -timeout 60s
@@ -92,7 +94,7 @@ jobs:
           CGO_ENABLED: "1"
           CLICKHOUSE_ADDR: localhost:9000
           CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_PASSWORD: ci_test_pw
 
       - name: Run E2E tests
         run: go test ./e2e/... -v -count=1 -timeout 120s
@@ -100,4 +102,4 @@ jobs:
           CGO_ENABLED: "1"
           CLICKHOUSE_ADDR: localhost:9000
           CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_PASSWORD: ci_test_pw
