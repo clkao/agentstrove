@@ -10,6 +10,9 @@ import type {
   Filters,
   SearchPage,
   GitLinkResult,
+  UserUsage,
+  HeatmapCell,
+  ToolUsageStat,
 } from "./types.js";
 
 class ApiError extends Error {
@@ -95,4 +98,28 @@ export function searchMessages(query: string, filters: Filters = {}): Promise<Se
   if (filters.date_to) params.set("date_to", filters.date_to);
   if (filters.limit) params.set("limit", String(filters.limit));
   return fetchJSON<SearchPage>(`/api/v1/search?${params.toString()}`);
+}
+
+export function fetchUsageOverview(dateFrom?: string, dateTo?: string): Promise<UserUsage[]> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  const qs = params.toString();
+  return fetchJSON<UserUsage[]>(`/api/v1/analytics/usage${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchActivityHeatmap(dateFrom?: string, dateTo?: string): Promise<HeatmapCell[]> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  const qs = params.toString();
+  return fetchJSON<HeatmapCell[]>(`/api/v1/analytics/heatmap${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchToolUsage(dateFrom?: string, dateTo?: string): Promise<ToolUsageStat[]> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  const qs = params.toString();
+  return fetchJSON<ToolUsageStat[]>(`/api/v1/analytics/tools${qs ? `?${qs}` : ""}`);
 }
