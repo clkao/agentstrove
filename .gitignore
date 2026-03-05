@@ -34,3 +34,6 @@ Thumbs.db
 
 # ClickHouse local data
 chdata/
+
+# Core dumps
+core
