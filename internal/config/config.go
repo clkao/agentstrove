@@ -13,6 +13,7 @@ import (
 // Config holds all daemon configuration fields.
 type Config struct {
 	ClickHouseAddr     string `json:"clickhouse_addr"`
+	ClickHouseDatabase string `json:"clickhouse_database"`
 	ClickHouseUser     string `json:"clickhouse_user"`
 	ClickHousePassword string `json:"clickhouse_password"`
 	UserName           string `json:"user_name"`

@@ -116,12 +116,20 @@ func clickhouseAddr(cfg *config.Config) string {
 	return "localhost:9000"
 }
 
+func clickhouseDatabase(cfg *config.Config) string {
+	if cfg.ClickHouseDatabase != "" {
+		return cfg.ClickHouseDatabase
+	}
+	return "agentstrove"
+}
+
 func openStore(cfg *config.Config) (*store.ClickHouseStore, error) {
 	addr := clickhouseAddr(cfg)
+	db := clickhouseDatabase(cfg)
 	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
-		return store.NewClickHouseStoreWithAuth(addr, "agentstrove", cfg.ClickHouseUser, cfg.ClickHousePassword)
+		return store.NewClickHouseStoreWithAuth(addr, db, cfg.ClickHouseUser, cfg.ClickHousePassword)
 	}
-	return store.NewClickHouseStore(addr, "agentstrove")
+	return store.NewClickHouseStore(addr, db)
 }
 
 func validateSyncConfig(cfg *config.Config, configPath string) bool {

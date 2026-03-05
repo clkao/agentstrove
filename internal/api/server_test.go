@@ -51,19 +51,7 @@ func setupTestAPI(t *testing.T) (*httptest.Server, *store.ClickHouseStore) {
 	password := clickhousePassword()
 	dbName := fmt.Sprintf("test_%s", randomHex(8))
 
-	adminConn, err := clickhouse.Open(&clickhouse.Options{
-		Addr:     []string{addr},
-		Protocol: clickhouse.Native,
-		Auth: clickhouse.Auth{
-			Username: user,
-			Password: password,
-		},
-	})
-	require.NoError(t, err, "connect to clickhouse to create test database")
-	require.NoError(t, adminConn.Exec(context.Background(), "CREATE DATABASE "+dbName),
-		"create test database")
-	adminConn.Close()
-
+	// Constructor bootstraps the database via "default" connection
 	s, err := store.NewClickHouseStoreWithAuth(addr, dbName, user, password)
 	require.NoError(t, err, "create store")
 	require.NoError(t, s.EnsureSchema(context.Background()), "ensure schema")

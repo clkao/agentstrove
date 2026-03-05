@@ -30,10 +30,32 @@ func NewClickHouseStore(addr, database string) (*ClickHouseStore, error) {
 }
 
 // NewClickHouseStoreWithAuth opens a native-protocol connection to ClickHouse with explicit credentials.
+// Bootstraps by connecting to "default" first to CREATE DATABASE IF NOT EXISTS,
+// since hosted ClickHouse validates the database during connection handshake.
 func NewClickHouseStoreWithAuth(addr, database, user, password string) (*ClickHouseStore, error) {
 	if user == "" {
 		user = "default"
 	}
+
+	// Bootstrap: connect to "default" to ensure working database exists.
+	bootstrapConn, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{addr},
+		Auth: clickhouse.Auth{
+			Database: "default",
+			Username: user,
+			Password: password,
+		},
+		Protocol: clickhouse.Native,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open clickhouse (bootstrap): %w", err)
+	}
+	if err := bootstrapConn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS "+database); err != nil {
+		bootstrapConn.Close()
+		return nil, fmt.Errorf("create database %s: %w", database, err)
+	}
+	bootstrapConn.Close()
+
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{addr},
 		Auth: clickhouse.Auth{

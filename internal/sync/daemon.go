@@ -49,11 +49,16 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 		addr = "localhost:9000"
 	}
 
+	db := cfg.ClickHouseDatabase
+	if db == "" {
+		db = "agentstrove"
+	}
+
 	var s *store.ClickHouseStore
 	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
-		s, err = store.NewClickHouseStoreWithAuth(addr, "agentstrove", cfg.ClickHouseUser, cfg.ClickHousePassword)
+		s, err = store.NewClickHouseStoreWithAuth(addr, db, cfg.ClickHouseUser, cfg.ClickHousePassword)
 	} else {
-		s, err = store.NewClickHouseStore(addr, "agentstrove")
+		s, err = store.NewClickHouseStore(addr, db)
 	}
 	if err != nil {
 		r.Close()

@@ -63,18 +63,7 @@ func TestDogfood(t *testing.T) {
 	password := clickhousePassword()
 	dbName := fmt.Sprintf("test_dogfood_%s", randomHex(8))
 
-	adminConn, err := clickhouse.Open(&clickhouse.Options{
-		Addr:     []string{addr},
-		Protocol: clickhouse.Native,
-		Auth: clickhouse.Auth{
-			Username: user,
-			Password: password,
-		},
-	})
-	require.NoError(t, err, "connect to clickhouse")
-	require.NoError(t, adminConn.Exec(context.Background(), "CREATE DATABASE "+dbName))
-	adminConn.Close()
-
+	// Constructor bootstraps the database via "default" connection
 	chStore, err := store.NewClickHouseStoreWithAuth(addr, dbName, user, password)
 	require.NoError(t, err)
 	t.Cleanup(func() {
