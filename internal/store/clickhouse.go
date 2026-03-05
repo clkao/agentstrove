@@ -757,6 +757,11 @@ func (s *ClickHouseStore) Search(ctx context.Context, orgID string, query Search
 
 	allRows := append(msgRows, tcRows...)
 
+	// Apply limit after combining both result sets
+	if len(allRows) > limit {
+		allRows = allRows[:limit]
+	}
+
 	results := make([]SearchResult, 0, len(allRows))
 	for _, r := range allRows {
 		snippet, highlights := extractSnippet(r.Content, q, 200)
