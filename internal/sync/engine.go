@@ -57,6 +57,11 @@ func NewEngine(cfg *config.Config, r *reader.Reader, st store.Store) (*Engine, e
 	}, nil
 }
 
+// ForceResync resets the watermark state so the next RunOnce will re-sync all sessions.
+func (e *Engine) ForceResync() {
+	e.state.ResetForResync(SyncVersion)
+}
+
 // RunOnce executes one sync cycle: reads changed sessions, masks secrets, writes
 // to the store, and advances the watermark. Returns a result summarizing what happened.
 func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
