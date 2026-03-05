@@ -5,7 +5,13 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrInvalidCursor = errors.New("invalid cursor")
 )
 
 type Session struct {

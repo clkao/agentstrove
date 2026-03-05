@@ -3,9 +3,9 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/clkao/agentstrove/internal/store"
@@ -67,7 +67,7 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 
 	page, err := s.store.ListSessions(r.Context(), "", filter)
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid cursor") {
+		if errors.Is(err, store.ErrInvalidCursor) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -81,7 +81,7 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	session, err := s.store.GetSession(r.Context(), "", id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}

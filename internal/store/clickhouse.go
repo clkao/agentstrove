@@ -398,7 +398,7 @@ func (s *ClickHouseStore) ListSessions(ctx context.Context, orgID string, filter
 	if filter.Cursor != "" {
 		cursorAt, cursorID, err := decodeCursor(filter.Cursor)
 		if err != nil {
-			return nil, fmt.Errorf("invalid cursor: %w", err)
+			return nil, fmt.Errorf("%w: %v", ErrInvalidCursor, err)
 		}
 		// Parse the RFC3339 timestamp from the cursor so we can pass a time.Time
 		// (ClickHouse cannot implicitly cast RFC3339 strings to DateTime64)
@@ -406,7 +406,7 @@ func (s *ClickHouseStore) ListSessions(ctx context.Context, orgID string, filter
 		if parseErr != nil {
 			cursorTime, parseErr = time.Parse(time.RFC3339, cursorAt)
 			if parseErr != nil {
-				return nil, fmt.Errorf("invalid cursor timestamp: %w", parseErr)
+				return nil, fmt.Errorf("%w: bad timestamp: %v", ErrInvalidCursor, parseErr)
 			}
 		}
 		dataWhere = append(dataWhere, "(s.started_at < ? OR (s.started_at = ? AND s.id < ?))")
@@ -467,7 +467,7 @@ func (s *ClickHouseStore) GetSession(ctx context.Context, orgID string, id strin
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("session %s not found", id)
+		return nil, fmt.Errorf("session %s: %w", id, ErrNotFound)
 	}
 	sess := sessionRowToSession(rows[0])
 	return &sess, nil

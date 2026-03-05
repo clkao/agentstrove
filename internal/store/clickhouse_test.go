@@ -486,7 +486,7 @@ func TestGetSessionNotFound(t *testing.T) {
 
 	_, err := s.GetSession(ctx, orgID, "nonexistent-session")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+	assert.ErrorIs(t, err, ErrNotFound)
 }
 
 func TestGetSessionCommitCount(t *testing.T) {
