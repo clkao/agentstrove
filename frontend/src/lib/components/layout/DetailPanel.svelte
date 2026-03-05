@@ -6,6 +6,8 @@
   import { formatTimestamp, formatAgentName, formatNumber } from "../../utils/format.js";
   import MessageList from "../content/MessageList.svelte";
 
+  let highlightOrdinal = $state<number | null>(null);
+
   $effect(() => {
     if (
       !messages.loading &&
@@ -14,11 +16,18 @@
     ) {
       const ordinal = messages.targetOrdinal;
       messages.targetOrdinal = null;
+      highlightOrdinal = ordinal;
       requestAnimationFrame(() => {
         const el = document.querySelector(`[data-ordinal="${ordinal}"]`);
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     }
+  });
+
+  // Clear highlight when switching sessions
+  $effect(() => {
+    sessions.activeSessionId;
+    highlightOrdinal = null;
   });
 </script>
 
@@ -48,7 +57,7 @@
       {#if messages.loading}
         <div class="loading-placeholder">Loading messages...</div>
       {:else if messages.messages.length > 0}
-        <MessageList messages={messages.messages} developerName={s.user_name} agentName={formatAgentName(s.agent_type)} />
+        <MessageList messages={messages.messages} developerName={s.user_name} agentName={formatAgentName(s.agent_type)} {highlightOrdinal} />
       {:else}
         <div class="loading-placeholder">No messages found.</div>
       {/if}
