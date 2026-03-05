@@ -156,6 +156,7 @@ type SearchPage struct {
 type Store interface {
 	EnsureSchema(ctx context.Context) error
 	WriteSession(ctx context.Context, orgID string, session Session, messages []Message, toolCalls []ToolCall) error
+	WriteBatch(ctx context.Context, orgID string, sessions []Session, messages []Message, toolCalls []ToolCall) error
 	WriteGitLinks(ctx context.Context, orgID string, links []GitLink) error
 	Close() error
 }

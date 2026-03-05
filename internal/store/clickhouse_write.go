@@ -1,5 +1,5 @@
 // ABOUTME: Write operations for the ClickHouse store.
-// ABOUTME: Implements WriteSession and WriteGitLinks with batch inserts.
+// ABOUTME: Implements WriteSession, WriteBatch, and WriteGitLinks with batch inserts.
 package store
 
 import (
@@ -72,6 +72,111 @@ func (s *ClickHouseStore) WriteSession(ctx context.Context, orgID string, sessio
 	}
 
 	// Insert tool calls
+	if len(toolCalls) > 0 {
+		tcBatch, err := s.conn.PrepareBatch(ctx, "INSERT INTO tool_calls")
+		if err != nil {
+			return fmt.Errorf("prepare tool_calls batch: %w", err)
+		}
+		for _, tc := range toolCalls {
+			var resultLen *uint32
+			if tc.ResultContentLength != nil {
+				v := uint32(*tc.ResultContentLength)
+				resultLen = &v
+			}
+			if err := tcBatch.Append(
+				orgID,
+				tc.SessionID,
+				uint32(tc.MessageOrdinal),
+				tc.ToolUseID,
+				tc.ToolName,
+				tc.Category,
+				tc.InputJSON,
+				tc.SkillName,
+				tc.ResultContent,
+				resultLen,
+				tc.SubagentSessionID,
+				version,
+			); err != nil {
+				return fmt.Errorf("append tool_call: %w", err)
+			}
+		}
+		if err := tcBatch.Send(); err != nil {
+			return fmt.Errorf("send tool_calls: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// WriteBatch inserts multiple sessions with their messages and tool calls
+// in combined batches — one PrepareBatch+Send per table.
+func (s *ClickHouseStore) WriteBatch(ctx context.Context, orgID string, sessions []Session, messages []Message, toolCalls []ToolCall) error {
+	if len(sessions) == 0 {
+		return nil
+	}
+	version := uint64(time.Now().UnixMilli())
+
+	// Sessions batch
+	batch, err := s.conn.PrepareBatch(ctx, "INSERT INTO sessions")
+	if err != nil {
+		return fmt.Errorf("prepare session batch: %w", err)
+	}
+	for _, session := range sessions {
+		if err := batch.Append(
+			orgID,
+			session.ID,
+			session.UserID,
+			session.UserName,
+			session.ProjectID,
+			session.ProjectName,
+			session.ProjectPath,
+			session.AgentType,
+			session.FirstMessage,
+			session.StartedAt,
+			session.EndedAt,
+			uint32(session.MessageCount),
+			uint32(session.UserMessageCount),
+			session.ParentSessionID,
+			session.RelationshipType,
+			session.Machine,
+			session.SourceCreatedAt,
+			version,
+		); err != nil {
+			return fmt.Errorf("append session %s: %w", session.ID, err)
+		}
+	}
+	if err := batch.Send(); err != nil {
+		return fmt.Errorf("send sessions: %w", err)
+	}
+
+	// Messages batch
+	if len(messages) > 0 {
+		msgBatch, err := s.conn.PrepareBatch(ctx, "INSERT INTO messages")
+		if err != nil {
+			return fmt.Errorf("prepare messages batch: %w", err)
+		}
+		for _, m := range messages {
+			if err := msgBatch.Append(
+				orgID,
+				m.SessionID,
+				uint32(m.Ordinal),
+				m.Role,
+				m.Content,
+				m.Timestamp,
+				m.HasThinking,
+				m.HasToolUse,
+				uint32(m.ContentLength),
+				version,
+			); err != nil {
+				return fmt.Errorf("append message: %w", err)
+			}
+		}
+		if err := msgBatch.Send(); err != nil {
+			return fmt.Errorf("send messages: %w", err)
+		}
+	}
+
+	// Tool calls batch
 	if len(toolCalls) > 0 {
 		tcBatch, err := s.conn.PrepareBatch(ctx, "INSERT INTO tool_calls")
 		if err != nil {

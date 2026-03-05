@@ -851,3 +851,50 @@ func TestListSessionsCommitCount(t *testing.T) {
 	assert.Equal(t, 2, byID["session-2"].CommitCount, "session-2 has 2 git links")
 	assert.Equal(t, 0, byID["session-1"].CommitCount, "session-1 has no git links")
 }
+
+func TestWriteBatch(t *testing.T) {
+	s := setupTestStore(t)
+	ctx := context.Background()
+	orgID := ""
+
+	sessions := []Session{
+		{ID: "batch-1", UserID: "u1", UserName: "User1", ProjectID: "p1", ProjectName: "proj1",
+			StartedAt: testTime(2026, 1, 1, 10), MessageCount: 2, UserMessageCount: 1, SourceCreatedAt: "2026-01-01T10:00:00Z"},
+		{ID: "batch-2", UserID: "u2", UserName: "User2", ProjectID: "p2", ProjectName: "proj2",
+			StartedAt: testTime(2026, 1, 2, 10), MessageCount: 1, UserMessageCount: 1, SourceCreatedAt: "2026-01-02T10:00:00Z"},
+	}
+	messages := []Message{
+		{OrgID: "", SessionID: "batch-1", Ordinal: 0, Role: "user", Content: "hello", ContentLength: 5},
+		{OrgID: "", SessionID: "batch-1", Ordinal: 1, Role: "assistant", Content: "hi", ContentLength: 2},
+		{OrgID: "", SessionID: "batch-2", Ordinal: 0, Role: "user", Content: "world", ContentLength: 5},
+	}
+	toolCalls := []ToolCall{
+		{OrgID: "", SessionID: "batch-1", MessageOrdinal: 1, ToolName: "Read", Category: "file", ToolUseID: "tc-1"},
+	}
+
+	require.NoError(t, s.WriteBatch(ctx, orgID, sessions, messages, toolCalls))
+
+	// Verify both sessions readable
+	s1, err := s.GetSession(ctx, orgID, "batch-1")
+	require.NoError(t, err)
+	assert.Equal(t, "batch-1", s1.ID)
+	assert.Equal(t, "User1", s1.UserName)
+
+	s2, err := s.GetSession(ctx, orgID, "batch-2")
+	require.NoError(t, err)
+	assert.Equal(t, "batch-2", s2.ID)
+
+	// Verify messages for each session
+	msgs1, err := s.GetSessionMessages(ctx, orgID, "batch-1")
+	require.NoError(t, err)
+	assert.Len(t, msgs1, 2)
+
+	msgs2, err := s.GetSessionMessages(ctx, orgID, "batch-2")
+	require.NoError(t, err)
+	assert.Len(t, msgs2, 1)
+
+	// Verify tool calls
+	tcs, err := s.GetSessionToolCalls(ctx, orgID, "batch-1")
+	require.NoError(t, err)
+	assert.Len(t, tcs, 1)
+}
