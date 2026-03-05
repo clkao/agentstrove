@@ -25,7 +25,7 @@ jobs:
       - name: Stub frontend embed dir
         run: mkdir -p internal/web/dist && echo ok > internal/web/dist/stub.html
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v7
         with:
           version: v2.10.1
 
