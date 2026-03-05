@@ -4,6 +4,7 @@
   import { analytics } from "../../stores/analytics.svelte.js";
   import TimeRangeControl from "./TimeRangeControl.svelte";
   import UsageOverview from "./UsageOverview.svelte";
+  import DailyActivityChart from "./DailyActivityChart.svelte";
   import ActivityHeatmap from "./ActivityHeatmap.svelte";
   import ToolUsage from "./ToolUsage.svelte";
 </script>
@@ -19,6 +20,7 @@
   {:else}
     <div class="analytics-content">
       <UsageOverview />
+      <DailyActivityChart />
       <div class="analytics-bottom">
         <ActivityHeatmap />
         <ToolUsage />

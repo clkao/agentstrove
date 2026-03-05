@@ -13,6 +13,7 @@ import type {
   UserUsage,
   HeatmapCell,
   ToolUsageStat,
+  DailyActivity,
 } from "./types.js";
 
 class ApiError extends Error {
@@ -122,4 +123,12 @@ export function fetchToolUsage(dateFrom?: string, dateTo?: string): Promise<Tool
   if (dateTo) params.set("date_to", dateTo);
   const qs = params.toString();
   return fetchJSON<ToolUsageStat[]>(`/api/v1/analytics/tools${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchDailyActivity(dateFrom?: string, dateTo?: string): Promise<DailyActivity[]> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  const qs = params.toString();
+  return fetchJSON<DailyActivity[]>(`/api/v1/analytics/daily${qs ? `?${qs}` : ""}`);
 }

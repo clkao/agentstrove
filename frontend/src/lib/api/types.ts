@@ -120,6 +120,13 @@ export interface UserUsage {
   project_name: string;
   session_count: number;
   message_count: number;
+  commit_count: number;
+}
+
+export interface DailyActivity {
+  date: string;
+  session_count: number;
+  message_count: number;
 }
 
 export interface HeatmapCell {

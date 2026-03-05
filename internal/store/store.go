@@ -159,6 +159,7 @@ type UserUsage struct {
 	ProjectName  string `json:"project_name"`
 	SessionCount int    `json:"session_count"`
 	MessageCount int    `json:"message_count"`
+	CommitCount  int    `json:"commit_count"`
 }
 
 type HeatmapCell struct {
@@ -171,6 +172,12 @@ type ToolUsageStat struct {
 	ToolName   string `json:"tool_name"`
 	Category   string `json:"category"`
 	UsageCount int    `json:"usage_count"`
+}
+
+type DailyActivity struct {
+	Date         string `json:"date"`
+	SessionCount int    `json:"session_count"`
+	MessageCount int    `json:"message_count"`
 }
 
 // Store handles write operations for agent session data.
@@ -196,5 +203,6 @@ type ReadStore interface {
 	UsageByUser(ctx context.Context, orgID string, dateFrom, dateTo string) ([]UserUsage, error)
 	ActivityHeatmap(ctx context.Context, orgID string, dateFrom, dateTo string) ([]HeatmapCell, error)
 	ToolUsageDistribution(ctx context.Context, orgID string, dateFrom, dateTo string) ([]ToolUsageStat, error)
+	DailyActivity(ctx context.Context, orgID string, dateFrom, dateTo string) ([]DailyActivity, error)
 	Close() error
 }

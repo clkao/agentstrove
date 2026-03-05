@@ -84,3 +84,29 @@ func (s *Server) handleToolUsage(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, result)
 }
+
+func (s *Server) handleDailyActivity(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	dateFrom := q.Get("date_from")
+	if dateFrom != "" {
+		if _, err := time.Parse("2006-01-02", dateFrom); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid date_from: "+dateFrom)
+			return
+		}
+	}
+	dateTo := q.Get("date_to")
+	if dateTo != "" {
+		if _, err := time.Parse("2006-01-02", dateTo); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid date_to: "+dateTo)
+			return
+		}
+	}
+
+	result, err := s.store.DailyActivity(r.Context(), "", dateFrom, dateTo)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
