@@ -1,12 +1,21 @@
 <!-- ABOUTME: Top-level navigation bar for switching between Conversations and Analytics. -->
-<!-- ABOUTME: Highlights the active page based on the current hash route. -->
+<!-- ABOUTME: Highlights the active page based on the current route. -->
 <script lang="ts">
-  let { page = "browser" }: { page: string } = $props();
+  import { router } from "../../stores/router.svelte.js";
+
+  function navigateTo(event: MouseEvent, page: "browser" | "analytics") {
+    event.preventDefault();
+    if (page === "browser") {
+      router.navigate({ page: "browser", sessionId: null });
+    } else {
+      router.navigate({ page: "analytics" });
+    }
+  }
 </script>
 
 <nav class="navigation">
-  <a href="#/" class:active={page === "browser"}>Conversations</a>
-  <a href="#/analytics" class:active={page === "analytics"}>Analytics</a>
+  <a href="/" class:active={router.page === "browser"} onclick={(e) => navigateTo(e, "browser")}>Conversations</a>
+  <a href="/analytics" class:active={router.page === "analytics"} onclick={(e) => navigateTo(e, "analytics")}>Analytics</a>
 </nav>
 
 <style>

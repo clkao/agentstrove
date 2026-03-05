@@ -2,7 +2,7 @@
 // ABOUTME: Svelte 5 runes-based store for sessions, filters, pagination, and active selection.
 
 import type { Session, SessionPage, Filters } from "../api/types.js";
-import { listSessions } from "../api/client.js";
+import { listSessions, getSession } from "../api/client.js";
 
 class SessionsStore {
   sessions = $state<Session[]>([]);
@@ -44,8 +44,17 @@ class SessionsStore {
     }
   }
 
-  selectSession(id: string): void {
+  selectSession(id: string | null): void {
     this.activeSessionId = id;
+  }
+
+  async ensureSession(id: string): Promise<void> {
+    this.activeSessionId = id;
+    if (this.sessions.find((s) => s.id === id)) return;
+    const session = await getSession(id);
+    if (!this.sessions.find((s) => s.id === id)) {
+      this.sessions = [session, ...this.sessions];
+    }
   }
 
   async updateFilters(partial: Partial<Filters>): Promise<void> {

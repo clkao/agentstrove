@@ -1,26 +1,25 @@
 <!-- ABOUTME: Compact row for a single session in the sidebar list. -->
-<!-- ABOUTME: Shows truncated first message, user name, and relative time. -->
+<!-- ABOUTME: Renders as an <a> tag with permalink href for native link behavior. -->
 <script lang="ts">
   import type { Session } from "../../api/types.js";
-  import { sessions } from "../../stores/sessions.svelte.js";
-  import { messages } from "../../stores/messages.svelte.js";
+  import { router } from "../../stores/router.svelte.js";
   import { formatRelativeTime, truncate } from "../../utils/format.js";
 
   let { session }: { session: Session } = $props();
 
-  let active = $derived(sessions.activeSessionId === session.id);
+  let active = $derived(router.sessionId === session.id);
 
-  function handleClick(): void {
-    sessions.selectSession(session.id);
-    messages.load(session.id);
+  function handleClick(event: MouseEvent): void {
+    event.preventDefault();
+    router.navigate({ page: "browser", sessionId: session.id });
   }
 </script>
 
-<button
+<a
   class="session-item"
   class:active
+  href="/sessions/{session.id}"
   onclick={handleClick}
-  type="button"
 >
   <div class="session-title">{truncate(session.first_message ?? "Untitled", 80)}</div>
   <div class="session-info">
@@ -30,7 +29,7 @@
     {/if}
     <span class="time">{formatRelativeTime(session.started_at)}</span>
   </div>
-</button>
+</a>
 
 <style>
   .session-item {
@@ -38,6 +37,8 @@
     width: 100%;
     padding: 10px 12px;
     text-align: left;
+    text-decoration: none;
+    color: inherit;
     border-bottom: 1px solid var(--border-muted);
     transition: background 0.1s;
   }

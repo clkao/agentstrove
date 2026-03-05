@@ -6,16 +6,10 @@ import { render, cleanup } from "@testing-library/svelte";
 import SearchResultItem from "./SearchResultItem.svelte";
 import type { SearchResult } from "../../api/types.js";
 
-vi.mock("../../stores/sessions.svelte.js", () => ({
-  sessions: {
-    selectSession: vi.fn(),
-  },
-}));
-
-vi.mock("../../stores/messages.svelte.js", () => ({
-  messages: {
-    load: vi.fn(),
-    targetOrdinal: null,
+vi.mock("../../stores/router.svelte.js", () => ({
+  router: {
+    sessionId: null,
+    navigate: vi.fn(),
   },
 }));
 
@@ -35,7 +29,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
     started_at: "2025-01-01T00:00:00Z",
     first_message: "Hello world",
     snippet: "before matching after",
-    highlights: [{ start: 7, length: 8 }],
+    highlights: [{ start: 7, end: 15 }],
     ...overrides,
   };
 }
@@ -44,7 +38,7 @@ describe("SearchResultItem", () => {
   it("renders snippet with <mark> elements for highlighted portions", () => {
     const result = makeResult({
       snippet: "before matching after",
-      highlights: [{ start: 7, length: 8 }],
+      highlights: [{ start: 7, end: 15 }],
     });
 
     const { container } = render(SearchResultItem, { props: { result } });
@@ -71,8 +65,8 @@ describe("SearchResultItem", () => {
     const result = makeResult({
       snippet: "first match and second match here",
       highlights: [
-        { start: 6, length: 5 },
-        { start: 23, length: 5 },
+        { start: 6, end: 11 },
+        { start: 23, end: 28 },
       ],
     });
 

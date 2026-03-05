@@ -1,17 +1,15 @@
 <!-- ABOUTME: Renders one search result with highlighted snippet and metadata. -->
-<!-- ABOUTME: Splits snippet at highlight boundaries and wraps matched portions in <mark> tags. -->
+<!-- ABOUTME: Renders as an <a> tag with deep-link href to the matched message. -->
 <script lang="ts">
   import type { SearchResult, Highlight } from "../../api/types.js";
-  import { sessions } from "../../stores/sessions.svelte.js";
-  import { messages } from "../../stores/messages.svelte.js";
+  import { router } from "../../stores/router.svelte.js";
   import { formatRelativeTime } from "../../utils/format.js";
 
   let { result }: { result: SearchResult } = $props();
 
-  function handleClick(): void {
-    sessions.selectSession(result.session_id);
-    messages.targetOrdinal = result.ordinal;
-    messages.load(result.session_id);
+  function handleClick(event: MouseEvent): void {
+    event.preventDefault();
+    router.navigate({ page: "browser", sessionId: result.session_id, messageOrdinal: result.ordinal });
   }
 
   function buildSnippetParts(
@@ -43,7 +41,7 @@
   let parts = $derived(buildSnippetParts(result.snippet, result.highlights));
 </script>
 
-<button class="result-item" onclick={handleClick} type="button">
+<a class="result-item" href="/sessions/{result.session_id}#msg-{result.ordinal}" onclick={handleClick}>
   <div class="result-snippet">
     {#each parts as part}
       {#if part.highlight}
@@ -58,7 +56,7 @@
     <span class="project">{result.project_name}</span>
     <span class="time">{formatRelativeTime(result.started_at)}</span>
   </div>
-</button>
+</a>
 
 <style>
   .result-item {
@@ -66,6 +64,8 @@
     width: 100%;
     padding: 10px 12px;
     text-align: left;
+    text-decoration: none;
+    color: inherit;
     border-bottom: 1px solid var(--border-muted);
     transition: background 0.1s;
     cursor: pointer;
