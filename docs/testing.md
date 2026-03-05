@@ -74,8 +74,7 @@ make test-all
 
 Uses seeded data: 5+ sessions, multiple users, projects, agents, git links. Runs against httptest server with real ClickHouse store.
 
-### Sessions & Browse (adapted from v0 Phase 02)
-
+### Sessions & Browse
 | ID | Test | Assert |
 |----|------|--------|
 | T1 | `GET /api/v1/sessions` returns data | 200, total > 0, sessions non-empty, each has id/user_name/started_at |
@@ -115,8 +114,7 @@ Uses seeded data: 5+ sessions, multiple users, projects, agents, git links. Runs
 | T37 | Metadata excludes ghost/subagent sessions | |
 | T38 | Empty filter params are no-ops | |
 
-### Search (adapted from v0 Phase 03)
-
+### Search
 | ID | Test | Assert |
 |----|------|--------|
 | S1 | Search returns results for known content | 200, results non-empty, snippet non-empty |
@@ -146,10 +144,7 @@ Uses seeded data: 5+ sessions, multiple users, projects, agents, git links. Runs
 | S26 | BM25 ranking (more occurrences → higher rank) | |
 | S27 | Search rebuild idempotent | |
 
-Note: S24 (search without index → 503) does not apply to v1 since search is built into the ClickHouse store, not a separate index.
-
-### Git Linking (adapted from v0 Phase 04)
-
+### Git Linking
 | ID | Test | Assert |
 |----|------|--------|
 | GL1 | Lookup by short SHA prefix | 200, result matches, link_type=commit, confidence=high |
@@ -273,14 +268,14 @@ curl -s localhost:8080/api/v1/sessions | jq '.total, (.sessions | length)'
 curl -s localhost:8080/api/v1/sessions | jq '.sessions[0]'
 ```
 
-## Lessons from v0
+## Known Edge Cases
 
-Bugs found during v0 E2E testing that v1 must avoid:
+These are validated by the test suite:
 
-1. **Invalid date params returning 500** — validate with `time.Parse` before building filters, return 400
-2. **Empty slices as null** — always `make([]T, 0)` for empty results, never nil slice
-3. **Tool call ordering nondeterministic** — always include `tool_use_id` as secondary sort key
-4. **Metadata endpoints including ghost/subagent sessions** — apply browsable filter to all metadata queries
-5. **Invalid UTF-8 from agentsview** — `strings.ToValidUTF8(s, "\uFFFD")` on all text fields before writing
-6. **Tool call message_ordinal wrong** — reader must JOIN with messages table to get actual ordinal (agentsview's `message_id` is auto-increment PK, not ordinal)
-7. **Git link extraction from wrong field** — extract from `tool_calls.result_content`, not from `messages.content`
+1. **Invalid date params** — validate with `time.Parse` before building filters, return 400
+2. **Empty slices** — always `make([]T, 0)` for empty results, never nil slice (JSON `[]` not `null`)
+3. **Tool call ordering** — always include `tool_use_id` as secondary sort key
+4. **Ghost/subagent sessions** — apply browsable filter (`parent_session_id = '' AND user_message_count > 0`) to all metadata queries
+5. **Invalid UTF-8** — `strings.ToValidUTF8(s, "\uFFFD")` on all text fields before writing to ClickHouse
+6. **Tool call message_ordinal** — reader JOINs with messages table to get actual ordinal (agentsview's `message_id` is auto-increment PK, not ordinal)
+7. **Git link extraction** — extract from `tool_calls.result_content`, not from `messages.content`

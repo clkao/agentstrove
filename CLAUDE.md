@@ -4,8 +4,6 @@
 
 Team visibility layer for AI agent conversations. Syncs local agent sessions (collected by agentsview) to shared ClickHouse storage. Provides browsing, full-text search, and git commit/PR-to-conversation linking via a web UI.
 
-This is a structured port from the v0 prototype at `../agentstrove`. Proven code is carried forward; storage backend is replaced (DuckLake → ClickHouse).
-
 ## Tech Stack
 
 - **Backend:** Go 1.25+, stdlib `net/http` (no framework)
@@ -34,8 +32,6 @@ internal/
   web/
     embed.go            //go:embed frontend dist
 frontend/               Svelte 5 SPA
-scripts/
-  clickhouse-schema.sql Canonical ClickHouse DDL
 e2e/                    E2E tests (seeded + dogfood)
 docs/                   Project documentation
 ```
@@ -74,20 +70,6 @@ Watermark persisted as JSON at `$DATA_DIR/sync-state.json` with per-session `{fi
 - `user_id` + `user_name` instead of raw email/name — stable identity, reconcilable later
 - `project_id` + `project_name` + `project_path` — project is a reconcilable entity, not just a filesystem path. Daemon resolves git remote → project_id at sync time when possible. Raw path always stored for after-the-fact reconciliation.
 - ClickHouse ReplacingMergeTree handles dedup via insert-only writes with `_version`
-
-## Reference: v0 Prototype
-
-The v0 codebase at `../agentstrove` has working implementations of everything except analytics. When implementing a feature, check the v0 code first:
-
-- `../agentstrove/internal/reader/` — agentsview SQLite reader (port directly)
-- `../agentstrove/internal/secrets/` — secret masking (port directly)
-- `../agentstrove/internal/gitlinks/` — git link extraction (port directly)
-- `../agentstrove/internal/sync/` — sync engine (simplify for ClickHouse)
-- `../agentstrove/internal/api/` — REST handlers (port, adjust store calls)
-- `../agentstrove/frontend/` — Svelte frontend (port, same API shape)
-- `../agentstrove/internal/lake/store.go` — original Store/ReadStore interfaces (adapt)
-- `../agentstrove/internal/lake/duckdb.go` — DuckLake impl (replace with ClickHouse)
-- `../agentstrove/internal/search/` — separate FTS index (eliminate — ClickHouse handles FTS)
 
 ## Conventions
 

@@ -58,10 +58,6 @@ cd frontend && npm install && npm run dev
 make build
 ```
 
-## Project Status
-
-Under active development. See [docs/roadmap.md](docs/roadmap.md) for the incremental ship plan.
-
 ## License
 
 MIT
