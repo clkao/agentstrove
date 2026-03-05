@@ -1,0 +1,185 @@
+/* ABOUTME: CSS custom properties and base styles from agentsview design system. */
+/* ABOUTME: Light/dark themes via prefers-color-scheme, layout variables, reset. */
+
+/* Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Light theme (default) */
+:root {
+  --bg-primary: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f0f1f4;
+  --bg-inset: #ecedf2;
+  --border-default: #d8dae2;
+  --border-muted: #e4e6ec;
+  --text-primary: #181b24;
+  --text-secondary: #555b6e;
+  --text-muted: #878ea0;
+  --accent-blue: #2563eb;
+  --accent-rose: #e11d48;
+  --accent-purple: #7c3aed;
+  --accent-amber: #d97706;
+  --accent-green: #059669;
+  --accent-coral: #f34e3f;
+  --accent-black: #2d2d2d;
+  --accent-red: #dc2626;
+  --accent-teal: #0d9488;
+  --user-bg: #eef2ff;
+  --assistant-bg: #faf9ff;
+  --thinking-bg: #f5f3ff;
+  --tool-bg: #fffbf0;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code",
+    "Fira Mono", Menlo, Consolas, monospace;
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+  --sidebar-width: 320px;
+  color-scheme: light;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #0d0d12;
+    --bg-surface: #16161e;
+    --bg-surface-hover: #1f1f2a;
+    --bg-inset: #111116;
+    --border-default: #2b2b38;
+    --border-muted: #232330;
+    --text-primary: #e4e6eb;
+    --text-secondary: #9ea5b4;
+    --text-muted: #6c7385;
+    --accent-blue: #60a5fa;
+    --accent-rose: #fb7185;
+    --accent-purple: #a78bfa;
+    --accent-amber: #fbbf24;
+    --accent-green: #34d399;
+    --accent-coral: #f34e3f;
+    --accent-black: #b0b0b0;
+    --accent-red: #f87171;
+    --accent-teal: #2dd4bf;
+    --user-bg: #111827;
+    --assistant-bg: #141220;
+    --thinking-bg: #1a1530;
+    --tool-bg: #1a1508;
+    --code-bg: #0d0d14;
+    --code-text: #cdd6f4;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --overlay-bg: rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-blue);
+  color: white;
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+/* Button reset */
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input reset */
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* Code */
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Utility: visually hidden */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
