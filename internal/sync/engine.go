@@ -78,6 +78,9 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 	}
 
 	userID, userName := e.config.ResolvedUserIdentity()
+	projectCache := make(map[string][2]string) // path → {id, name}
+
+	log.Printf("sync: found %d sessions to check", len(sessions))
 
 	for _, sess := range sessions {
 		if !e.state.IsSessionChanged(sess.ID, sess.FileHash) {
@@ -85,12 +88,16 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 			continue
 		}
 
-		if err := e.syncSession(ctx, sess, userID, userName, result); err != nil {
+		if err := e.syncSession(ctx, sess, userID, userName, projectCache, result); err != nil {
 			result.Errors[sess.ID] = err
 			continue
 		}
 
 		result.SessionsSynced++
+
+		if result.SessionsSynced%100 == 0 {
+			log.Printf("sync: %d/%d sessions synced", result.SessionsSynced, len(sessions))
+		}
 	}
 
 	if err := e.state.Save(e.statePath); err != nil {
@@ -103,7 +110,7 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 // syncSession handles one session: reads only new messages and tool calls
 // (ordinal > lastOrdinal), masks secrets, converts to store types, and writes.
 // The session row is always re-written to refresh metadata.
-func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, userName string, result *SyncResult) error {
+func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, userName string, projectCache map[string][2]string, result *SyncResult) error {
 	lastOrdinal := e.state.GetLastOrdinal(sess.ID)
 
 	allMsgs, err := e.reader.ReadMessagesForSession(sess.ID)
@@ -131,7 +138,13 @@ func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, u
 		}
 	}
 
-	projectID, projectName := config.ResolveProjectIdentity(sess.Project)
+	var projectID, projectName string
+	if cached, ok := projectCache[sess.Project]; ok {
+		projectID, projectName = cached[0], cached[1]
+	} else {
+		projectID, projectName = config.ResolveProjectIdentity(sess.Project)
+		projectCache[sess.Project] = [2]string{projectID, projectName}
+	}
 
 	storeSession := store.Session{
 		OrgID:            "",
