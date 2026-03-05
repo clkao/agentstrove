@@ -50,6 +50,18 @@ func NewClickHouseStoreWithAuth(addr, database, user, password string) (*ClickHo
 }
 
 
+// ResetDatabase drops and recreates the database, then re-creates the schema.
+// ClickHouse allows cross-database DDL from any connection.
+func (s *ClickHouseStore) ResetDatabase(ctx context.Context) error {
+	if err := s.conn.Exec(ctx, "DROP DATABASE IF EXISTS "+s.database); err != nil {
+		return fmt.Errorf("drop database: %w", err)
+	}
+	if err := s.conn.Exec(ctx, "CREATE DATABASE "+s.database); err != nil {
+		return fmt.Errorf("create database: %w", err)
+	}
+	return s.EnsureSchema(ctx)
+}
+
 // EnsureSchema creates the tables defined in the embedded DDL file.
 // Statements are split on ";\n" and executed one by one. Lines starting
 // with -- are stripped before execution.

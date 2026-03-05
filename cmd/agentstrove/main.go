@@ -40,6 +40,7 @@ func run() int {
 	configPath := defaultConfigPath()
 	port := 0
 	force := false
+	resetDB := false
 	for i, a := range args {
 		if a == "-config" || a == "--config" {
 			if i+1 < len(args) {
@@ -54,11 +55,14 @@ func run() int {
 		if a == "-force" || a == "--force" {
 			force = true
 		}
+		if a == "-reset-db" || a == "--reset-db" {
+			resetDB = true
+		}
 	}
 
 	switch subcmd {
 	case "sync":
-		return runSync(configPath, force)
+		return runSync(configPath, force, resetDB)
 	case "daemon":
 		return runDaemon(configPath)
 	case "serve":
@@ -80,6 +84,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  --config path   Config file (default: %s)\n", defaultConfigPath())
 	fmt.Fprintf(os.Stderr, "  --port N        Server port (default: 8080, serve only)\n")
 	fmt.Fprintf(os.Stderr, "  --force         Force full resync of all sessions (sync only)\n")
+	fmt.Fprintf(os.Stderr, "  --reset-db      Drop and recreate the ClickHouse database (sync only)\n")
 }
 
 func defaultConfigPath() string {
@@ -134,7 +139,7 @@ func validateSyncConfig(cfg *config.Config, configPath string) bool {
 	return true
 }
 
-func runSync(configPath string, force bool) int {
+func runSync(configPath string, force, resetDB bool) int {
 	cfg, ok := loadConfig(configPath)
 	if !ok {
 		return 1
@@ -163,9 +168,18 @@ func runSync(configPath string, force bool) int {
 	}
 	defer s.Close()
 
-	if err := s.EnsureSchema(context.Background()); err != nil {
-		fmt.Fprintf(os.Stderr, "Error ensuring schema: %v\n", err)
-		return 1
+	if resetDB {
+		log.Printf("agentstrove sync: --reset-db specified, dropping and recreating database")
+		if err := s.ResetDatabase(context.Background()); err != nil {
+			fmt.Fprintf(os.Stderr, "Error resetting database: %v\n", err)
+			return 1
+		}
+		force = true // reset-db implies force resync
+	} else {
+		if err := s.EnsureSchema(context.Background()); err != nil {
+			fmt.Fprintf(os.Stderr, "Error ensuring schema: %v\n", err)
+			return 1
+		}
 	}
 
 	engine, err := astSync.NewEngine(cfg, r, s)
@@ -198,6 +212,18 @@ func runSync(configPath string, force bool) int {
 
 	log.Printf("agentstrove sync done: %d synced, %d skipped, %d secrets, %d errors",
 		result.SessionsSynced, result.SessionsSkipped, result.SecretsDetected, len(result.Errors))
+
+	if len(result.Errors) > 0 {
+		shown := 0
+		for sessionID, err := range result.Errors {
+			log.Printf("  error [%s]: %v", sessionID, err)
+			shown++
+			if shown >= 5 {
+				log.Printf("  ... and %d more errors", len(result.Errors)-shown)
+				break
+			}
+		}
+	}
 
 	return 0
 }
