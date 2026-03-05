@@ -898,3 +898,263 @@ func TestWriteBatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, tcs, 1)
 }
+
+// seedAnalyticsData seeds test data for analytics tests.
+// Alice: 2 sessions on claude-code/frontend (Jan 5 10am, Jan 5 14pm), 1 session on cursor/backend (Jan 4 9am)
+// Bob: 1 session on claude-code/frontend (Jan 3 14pm)
+// 1 ghost session (user_message_count=0) — should be excluded
+// 1 subagent session (parent_session_id != '') — should be excluded
+// Tool calls: multiple for different sessions (Bash/bash, Write/file, Read/file categories)
+func seedAnalyticsData(t *testing.T, s *ClickHouseStore) {
+	t.Helper()
+	ctx := context.Background()
+	orgID := ""
+
+	sessions := []Session{
+		{
+			ID: "analytics-1", UserID: "alice@test.com", UserName: "Alice",
+			ProjectID: "proj-fe", ProjectName: "frontend", ProjectPath: "/home/alice/frontend",
+			AgentType: "claude-code", FirstMessage: "Fix styles",
+			StartedAt: testTime(2024, 1, 5, 10), EndedAt: testTime(2024, 1, 5, 11),
+			MessageCount: 4, UserMessageCount: 2, Machine: "macbook", SourceCreatedAt: "2024-01-05",
+		},
+		{
+			ID: "analytics-2", UserID: "alice@test.com", UserName: "Alice",
+			ProjectID: "proj-fe", ProjectName: "frontend", ProjectPath: "/home/alice/frontend",
+			AgentType: "claude-code", FirstMessage: "Add tests",
+			StartedAt: testTime(2024, 1, 5, 14), EndedAt: testTime(2024, 1, 5, 15),
+			MessageCount: 6, UserMessageCount: 3, Machine: "macbook", SourceCreatedAt: "2024-01-05",
+		},
+		{
+			ID: "analytics-3", UserID: "alice@test.com", UserName: "Alice",
+			ProjectID: "proj-be", ProjectName: "backend", ProjectPath: "/home/alice/backend",
+			AgentType: "cursor", FirstMessage: "Fix API",
+			StartedAt: testTime(2024, 1, 4, 9), EndedAt: testTime(2024, 1, 4, 10),
+			MessageCount: 2, UserMessageCount: 1, Machine: "macbook", SourceCreatedAt: "2024-01-04",
+		},
+		{
+			ID: "analytics-4", UserID: "bob@test.com", UserName: "Bob",
+			ProjectID: "proj-fe", ProjectName: "frontend", ProjectPath: "/home/bob/frontend",
+			AgentType: "claude-code", FirstMessage: "Update docs",
+			StartedAt: testTime(2024, 1, 3, 14), EndedAt: testTime(2024, 1, 3, 15),
+			MessageCount: 8, UserMessageCount: 4, Machine: "linux-box", SourceCreatedAt: "2024-01-03",
+		},
+		// Ghost session — should be excluded
+		{
+			ID: "analytics-ghost", UserID: "alice@test.com", UserName: "Alice",
+			ProjectID: "proj-fe", ProjectName: "frontend", ProjectPath: "/home/alice/frontend",
+			AgentType: "claude-code", FirstMessage: "",
+			StartedAt: testTime(2024, 1, 2, 8),
+			MessageCount: 0, UserMessageCount: 0, Machine: "macbook", SourceCreatedAt: "2024-01-02",
+		},
+		// Subagent session — should be excluded
+		{
+			ID: "analytics-sub", UserID: "alice@test.com", UserName: "Alice",
+			ProjectID: "proj-fe", ProjectName: "frontend", ProjectPath: "/home/alice/frontend",
+			AgentType: "claude-code", FirstMessage: "Subagent task",
+			StartedAt: testTime(2024, 1, 5, 10),
+			MessageCount: 2, UserMessageCount: 1, ParentSessionID: "analytics-1",
+			RelationshipType: "subagent", Machine: "macbook", SourceCreatedAt: "2024-01-05",
+		},
+	}
+
+	for _, sess := range sessions {
+		require.NoError(t, s.WriteSession(ctx, orgID, sess, nil, nil), "seed session %s", sess.ID)
+	}
+
+	// Tool calls for analytics-1: 2x Bash
+	tc1 := []ToolCall{
+		{OrgID: orgID, SessionID: "analytics-1", MessageOrdinal: 1, ToolUseID: "atc-1a", ToolName: "Bash", Category: "bash", InputJSON: `{"cmd":"ls"}`},
+		{OrgID: orgID, SessionID: "analytics-1", MessageOrdinal: 2, ToolUseID: "atc-1b", ToolName: "Bash", Category: "bash", InputJSON: `{"cmd":"pwd"}`},
+	}
+	// Tool calls for analytics-2: 1x Write, 1x Read
+	tc2 := []ToolCall{
+		{OrgID: orgID, SessionID: "analytics-2", MessageOrdinal: 1, ToolUseID: "atc-2a", ToolName: "Write", Category: "file", InputJSON: `{"path":"a.ts"}`},
+		{OrgID: orgID, SessionID: "analytics-2", MessageOrdinal: 2, ToolUseID: "atc-2b", ToolName: "Read", Category: "file", InputJSON: `{"path":"b.ts"}`},
+	}
+	// Tool calls for analytics-4: 1x Bash
+	tc4 := []ToolCall{
+		{OrgID: orgID, SessionID: "analytics-4", MessageOrdinal: 1, ToolUseID: "atc-4a", ToolName: "Bash", Category: "bash", InputJSON: `{"cmd":"echo"}`},
+	}
+
+	// Write sessions with tool calls
+	require.NoError(t, s.WriteSession(ctx, orgID, sessions[0], nil, tc1), "seed analytics-1 tool calls")
+	require.NoError(t, s.WriteSession(ctx, orgID, sessions[1], nil, tc2), "seed analytics-2 tool calls")
+	require.NoError(t, s.WriteSession(ctx, orgID, sessions[3], nil, tc4), "seed analytics-4 tool calls")
+}
+
+func TestUsageByUser(t *testing.T) {
+	s := setupTestStore(t)
+	seedAnalyticsData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	results, err := s.UsageByUser(ctx, orgID, "", "")
+	require.NoError(t, err)
+	require.NotNil(t, results)
+
+	// 4 browsable sessions across 3 groups:
+	// Alice: claude-code/frontend (2 sessions, 4+6=10 msgs)
+	// Alice: cursor/backend (1 session, 2 msgs)
+	// Bob: claude-code/frontend (1 session, 8 msgs)
+	assert.Len(t, results, 3)
+
+	// Ordered by session_count DESC — Alice claude-code/frontend first (2 sessions)
+	assert.Equal(t, "alice@test.com", results[0].UserID)
+	assert.Equal(t, "Alice", results[0].UserName)
+	assert.Equal(t, "claude-code", results[0].AgentType)
+	assert.Equal(t, "frontend", results[0].ProjectName)
+	assert.Equal(t, 2, results[0].SessionCount)
+	assert.Equal(t, 10, results[0].MessageCount)
+
+	// The other two have 1 session each; check they're present
+	byKey := map[string]UserUsage{}
+	for _, r := range results {
+		key := r.UserID + "/" + r.AgentType + "/" + r.ProjectName
+		byKey[key] = r
+	}
+	bobFE := byKey["bob@test.com/claude-code/frontend"]
+	assert.Equal(t, 1, bobFE.SessionCount)
+	assert.Equal(t, 8, bobFE.MessageCount)
+
+	aliceBE := byKey["alice@test.com/cursor/backend"]
+	assert.Equal(t, 1, aliceBE.SessionCount)
+	assert.Equal(t, 2, aliceBE.MessageCount)
+}
+
+func TestUsageByUserDateFilter(t *testing.T) {
+	s := setupTestStore(t)
+	seedAnalyticsData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	// Filter to Jan 5 only — should get Alice's 2 claude-code/frontend sessions only
+	results, err := s.UsageByUser(ctx, orgID, "2024-01-05", "2024-01-05")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "alice@test.com", results[0].UserID)
+	assert.Equal(t, "claude-code", results[0].AgentType)
+	assert.Equal(t, "frontend", results[0].ProjectName)
+	assert.Equal(t, 2, results[0].SessionCount)
+
+	// Filter to Jan 3 only — should get Bob's session
+	results, err = s.UsageByUser(ctx, orgID, "2024-01-03", "2024-01-03")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "bob@test.com", results[0].UserID)
+
+	// Filter from Jan 4 to Jan 5 — Alice's 3 sessions (2 groups)
+	results, err = s.UsageByUser(ctx, orgID, "2024-01-04", "2024-01-05")
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+}
+
+func TestUsageByUserEmpty(t *testing.T) {
+	s := setupTestStore(t)
+	ctx := context.Background()
+	orgID := ""
+
+	results, err := s.UsageByUser(ctx, orgID, "", "")
+	require.NoError(t, err)
+	assert.NotNil(t, results, "should return empty slice, not nil")
+	assert.Len(t, results, 0)
+}
+
+func TestUsageByUserExcludesSubagentAndGhost(t *testing.T) {
+	s := setupTestStore(t)
+	seedAnalyticsData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	results, err := s.UsageByUser(ctx, orgID, "", "")
+	require.NoError(t, err)
+
+	// Total sessions counted should be 4 (not 6 which includes ghost + subagent)
+	totalSessions := 0
+	for _, r := range results {
+		totalSessions += r.SessionCount
+	}
+	assert.Equal(t, 4, totalSessions, "ghost and subagent sessions should be excluded")
+}
+
+func TestActivityHeatmap(t *testing.T) {
+	s := setupTestStore(t)
+	seedAnalyticsData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	cells, err := s.ActivityHeatmap(ctx, orgID, "", "")
+	require.NoError(t, err)
+	require.NotNil(t, cells)
+
+	// sessions:
+	// analytics-1: Jan 5 2024 10:00 UTC — Friday (5), hour 10
+	// analytics-2: Jan 5 2024 14:00 UTC — Friday (5), hour 14
+	// analytics-3: Jan 4 2024 09:00 UTC — Thursday (4), hour 9
+	// analytics-4: Jan 3 2024 14:00 UTC — Wednesday (3), hour 14
+
+	byDowHour := map[[2]int]int{}
+	for _, c := range cells {
+		byDowHour[[2]int{c.DayOfWeek, c.Hour}] = c.SessionCount
+	}
+
+	assert.Equal(t, 1, byDowHour[[2]int{5, 10}], "Friday 10am: 1 session")
+	assert.Equal(t, 1, byDowHour[[2]int{5, 14}], "Friday 14pm: 1 session")
+	assert.Equal(t, 1, byDowHour[[2]int{4, 9}], "Thursday 9am: 1 session")
+	assert.Equal(t, 1, byDowHour[[2]int{3, 14}], "Wednesday 14pm: 1 session")
+	assert.Len(t, cells, 4, "4 distinct dow/hour combinations")
+}
+
+func TestActivityHeatmapEmpty(t *testing.T) {
+	s := setupTestStore(t)
+	ctx := context.Background()
+	orgID := ""
+
+	cells, err := s.ActivityHeatmap(ctx, orgID, "", "")
+	require.NoError(t, err)
+	assert.NotNil(t, cells, "should return empty slice, not nil")
+	assert.Len(t, cells, 0)
+}
+
+func TestToolUsageDistribution(t *testing.T) {
+	s := setupTestStore(t)
+	seedAnalyticsData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "")
+	require.NoError(t, err)
+	require.NotNil(t, stats)
+
+	// Tool calls seeded:
+	// Bash/bash: 3 (2 in analytics-1, 1 in analytics-4)
+	// Write/file: 1 (in analytics-2)
+	// Read/file: 1 (in analytics-2)
+	assert.Len(t, stats, 3)
+
+	// Ordered by usage_count DESC — Bash first
+	assert.Equal(t, "Bash", stats[0].ToolName)
+	assert.Equal(t, "bash", stats[0].Category)
+	assert.Equal(t, 3, stats[0].UsageCount)
+
+	// The other two have 1 each
+	byName := map[string]ToolUsageStat{}
+	for _, s := range stats {
+		byName[s.ToolName] = s
+	}
+	assert.Equal(t, 1, byName["Write"].UsageCount)
+	assert.Equal(t, "file", byName["Write"].Category)
+	assert.Equal(t, 1, byName["Read"].UsageCount)
+	assert.Equal(t, "file", byName["Read"].Category)
+}
+
+func TestToolUsageDistributionEmpty(t *testing.T) {
+	s := setupTestStore(t)
+	ctx := context.Background()
+	orgID := ""
+
+	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "")
+	require.NoError(t, err)
+	assert.NotNil(t, stats, "should return empty slice, not nil")
+	assert.Len(t, stats, 0)
+}

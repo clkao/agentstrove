@@ -152,6 +152,27 @@ type SearchPage struct {
 	Total   int            `json:"total"`
 }
 
+type UserUsage struct {
+	UserID       string `json:"user_id"`
+	UserName     string `json:"user_name"`
+	AgentType    string `json:"agent_type"`
+	ProjectName  string `json:"project_name"`
+	SessionCount int    `json:"session_count"`
+	MessageCount int    `json:"message_count"`
+}
+
+type HeatmapCell struct {
+	DayOfWeek    int `json:"day_of_week"`
+	Hour         int `json:"hour"`
+	SessionCount int `json:"session_count"`
+}
+
+type ToolUsageStat struct {
+	ToolName   string `json:"tool_name"`
+	Category   string `json:"category"`
+	UsageCount int    `json:"usage_count"`
+}
+
 // Store handles write operations for agent session data.
 type Store interface {
 	EnsureSchema(ctx context.Context) error
@@ -172,5 +193,8 @@ type ReadStore interface {
 	ListAgents(ctx context.Context, orgID string) ([]string, error)
 	Search(ctx context.Context, orgID string, query SearchQuery) (*SearchPage, error)
 	LookupGitLinks(ctx context.Context, orgID string, sha string, prURL string) ([]GitLinkResult, error)
+	UsageByUser(ctx context.Context, orgID string, dateFrom, dateTo string) ([]UserUsage, error)
+	ActivityHeatmap(ctx context.Context, orgID string, dateFrom, dateTo string) ([]HeatmapCell, error)
+	ToolUsageDistribution(ctx context.Context, orgID string, dateFrom, dateTo string) ([]ToolUsageStat, error)
 	Close() error
 }
