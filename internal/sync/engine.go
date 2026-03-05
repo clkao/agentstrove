@@ -19,7 +19,7 @@ import (
 
 // SyncVersion is incremented when the sync logic changes in a way that requires
 // a full re-sync of all sessions.
-const SyncVersion = 1
+const SyncVersion = 2
 
 // SyncResult reports what happened during a single RunOnce invocation.
 type SyncResult struct {
