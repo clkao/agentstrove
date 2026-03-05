@@ -61,20 +61,20 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 		Secure:   cfg.ClickHouseSecure,
 	})
 	if err != nil {
-		r.Close()
+		_ = r.Close()
 		return nil, fmt.Errorf("create store: %w", err)
 	}
 
 	if err := s.EnsureSchema(context.Background()); err != nil {
-		s.Close()
-		r.Close()
+		_ = s.Close()
+		_ = r.Close()
 		return nil, fmt.Errorf("ensure schema: %w", err)
 	}
 
 	d, err := NewDaemonWithDeps(cfg, s, r)
 	if err != nil {
-		s.Close()
-		r.Close()
+		_ = s.Close()
+		_ = r.Close()
 		return nil, err
 	}
 
@@ -133,7 +133,7 @@ func (d *Daemon) watchLoop(ctx context.Context) {
 		log.Printf("daemon: failed to create watcher: %v", err)
 		return
 	}
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	dbPath := d.config.AgentsviewDBPath
 
@@ -259,11 +259,19 @@ func (d *Daemon) Status() DaemonStatus {
 
 // Close releases daemon resources (reader and store).
 func (d *Daemon) Close() error {
+	var errs []error
 	if d.reader != nil {
-		d.reader.Close()
+		if err := d.reader.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	if d.store != nil {
-		d.store.Close()
+		if err := d.store.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errs[0]
 	}
 	return nil
 }

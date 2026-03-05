@@ -40,7 +40,7 @@ func dogfoodGet(t *testing.T, env *dogfoodEnv, path string) (int, []byte) {
 	t.Helper()
 	resp, err := http.Get(env.server.URL + path)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, body
@@ -67,7 +67,7 @@ func TestDogfood(t *testing.T) {
 	chStore, err := store.NewClickHouseStoreWithAuth(addr, dbName, user, password)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		chStore.Close()
+		_ = chStore.Close()
 		dropConn, err := clickhouse.Open(&clickhouse.Options{
 			Addr:     []string{addr},
 			Protocol: clickhouse.Native,
@@ -77,8 +77,8 @@ func TestDogfood(t *testing.T) {
 			},
 		})
 		if err == nil {
-			dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
-			dropConn.Close()
+			_ = dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
+			_ = dropConn.Close()
 		}
 	})
 
@@ -87,7 +87,7 @@ func TestDogfood(t *testing.T) {
 
 	r, err := reader.NewReader(dbPath)
 	require.NoError(t, err)
-	t.Cleanup(func() { r.Close() })
+	t.Cleanup(func() { _ = r.Close() })
 
 	dir := t.TempDir()
 	cfg := &config.Config{
@@ -459,7 +459,7 @@ func TestDogfood(t *testing.T) {
 		for _, ep := range []string{"/api/v1/sessions", "/api/v1/users", "/api/v1/projects", "/api/v1/agents"} {
 			resp, err := http.Get(env.server.URL + ep)
 			require.NoError(t, err)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			assert.Contains(t, resp.Header.Get("Content-Type"), "application/json", ep)
 		}
 	})
@@ -467,7 +467,7 @@ func TestDogfood(t *testing.T) {
 	t.Run("CORSHeaders", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.NotEmpty(t, resp.Header.Get("Access-Control-Allow-Origin"))
 	})
 

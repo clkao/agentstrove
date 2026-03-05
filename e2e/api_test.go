@@ -24,7 +24,7 @@ func TestT33_GhostAndSubagentSessionsExcluded(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?limit=100")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -43,7 +43,7 @@ func TestT34_SessionDataQuality(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?limit=100")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -64,7 +64,7 @@ func TestT1_SessionsEndpointReturnsData(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -99,7 +99,7 @@ func TestT2_SessionDetailReturnsValidSession(t *testing.T) {
 	// Get sessions list first
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -110,7 +110,7 @@ func TestT2_SessionDetailReturnsValidSession(t *testing.T) {
 	// Fetch detail
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions/" + targetID)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
 
@@ -127,7 +127,7 @@ func TestT3_SessionMessagesWithToolCalls(t *testing.T) {
 	// sess-alpha has messages with tool calls
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-alpha/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -163,7 +163,7 @@ func TestT4_PaginationWorks(t *testing.T) {
 	// Fetch first page with limit=2
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?limit=2")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page1 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page1))
@@ -176,7 +176,7 @@ func TestT4_PaginationWorks(t *testing.T) {
 	// Fetch second page
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?limit=2&cursor=" + page1.NextCursor)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
@@ -198,7 +198,7 @@ func TestT5_FilterByUser(t *testing.T) {
 	// Get users list
 	resp, err := http.Get(env.server.URL + "/api/v1/users")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var users []store.UserInfo
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&users))
@@ -209,7 +209,7 @@ func TestT5_FilterByUser(t *testing.T) {
 	// Filter sessions by user
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=" + targetID)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page))
@@ -226,7 +226,7 @@ func TestT6_FilterByProject(t *testing.T) {
 	// Get projects list
 	resp, err := http.Get(env.server.URL + "/api/v1/projects")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var projects []store.ProjectInfo
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&projects))
@@ -237,7 +237,7 @@ func TestT6_FilterByProject(t *testing.T) {
 	// Filter sessions by project
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?project_id=" + targetProjectID)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page))
@@ -254,7 +254,7 @@ func TestT7_FilterByAgent(t *testing.T) {
 	// Get agents list
 	resp, err := http.Get(env.server.URL + "/api/v1/agents")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var agents []string
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&agents))
@@ -265,7 +265,7 @@ func TestT7_FilterByAgent(t *testing.T) {
 	// Filter sessions by agent
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?agent_type=" + targetAgent)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page))
@@ -282,7 +282,7 @@ func TestT8_DateRangeFilter(t *testing.T) {
 	// Get all sessions to find the date range
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -294,7 +294,7 @@ func TestT8_DateRangeFilter(t *testing.T) {
 	// Filter by date_from = latest date
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?date_from=" + latestDate)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var filteredPage store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&filteredPage))
@@ -316,7 +316,7 @@ func TestT9_MetadataEndpointsReturnData(t *testing.T) {
 	// Users
 	resp, err := http.Get(env.server.URL + "/api/v1/users")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var users []store.UserInfo
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&users))
@@ -329,7 +329,7 @@ func TestT9_MetadataEndpointsReturnData(t *testing.T) {
 	// Projects
 	resp2, err := http.Get(env.server.URL + "/api/v1/projects")
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var projects []store.ProjectInfo
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&projects))
@@ -342,7 +342,7 @@ func TestT9_MetadataEndpointsReturnData(t *testing.T) {
 	// Agents
 	resp3, err := http.Get(env.server.URL + "/api/v1/agents")
 	require.NoError(t, err)
-	defer resp3.Body.Close()
+	defer func() { _ = resp3.Body.Close() }()
 
 	var agents []string
 	require.NoError(t, json.NewDecoder(resp3.Body).Decode(&agents))
@@ -370,7 +370,7 @@ func TestT10_SecretMaskingVerified(t *testing.T) {
 	// Get all sessions
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -382,7 +382,7 @@ func TestT10_SecretMaskingVerified(t *testing.T) {
 
 		var messages []api.MessageWithToolCalls
 		require.NoError(t, json.NewDecoder(resp2.Body).Decode(&messages))
-		resp2.Body.Close()
+		_ = resp2.Body.Close()
 
 		for _, msg := range messages {
 			for _, pat := range secretPatterns {
@@ -400,7 +400,7 @@ func TestT11_NotFoundForMissingSession(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/nonexistent-id-12345")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
@@ -412,13 +412,13 @@ func TestT12_SPAFallback(t *testing.T) {
 	// Root path should return 200
 	resp, err := http.Get(env.server.URL + "/")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Arbitrary SPA path should also return 200
 	resp2, err := http.Get(env.server.URL + "/some/random/path")
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
 }
 
@@ -442,7 +442,7 @@ func TestT13_MalformedCursorReturns400(t *testing.T) {
 			}
 			resp, err := http.Get(env.server.URL + "/api/v1/sessions?cursor=" + tc.cursor)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode,
 				"malformed cursor %q should return 400", tc.cursor)
@@ -470,7 +470,7 @@ func TestT14_LimitEdgeCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := http.Get(env.server.URL + "/api/v1/sessions?" + tc.query)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -489,7 +489,7 @@ func TestT15_DateToAndCombinedDateRange(t *testing.T) {
 	// date_to only: sessions before end of 2026-02-26
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?date_to=2026-02-26")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -506,7 +506,7 @@ func TestT15_DateToAndCombinedDateRange(t *testing.T) {
 	// Combined: date_from=2026-02-26 AND date_to=2026-03-01
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?date_from=2026-02-26&date_to=2026-03-01")
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var rangePage store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&rangePage))
@@ -533,7 +533,7 @@ func TestT16_CombinedFilters(t *testing.T) {
 	// Alice + frontend + claude-code: should match sess-alpha and sess-gamma
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=alice@dev.io&project_id=proj-frontend&agent_type=claude-code")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -548,7 +548,7 @@ func TestT16_CombinedFilters(t *testing.T) {
 	// Bob + backend + cursor: should match sess-beta only
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=bob@dev.io&project_id=proj-backend&agent_type=cursor")
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
@@ -563,7 +563,7 @@ func TestT17_EmptyResultSet(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=nobody@nowhere.com")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -581,7 +581,7 @@ func TestT18_MessagesForNonexistentSession(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/nonexistent-id/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -609,7 +609,7 @@ func TestT19_FullPaginationWalk(t *testing.T) {
 
 		var page store.SessionPage
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		for _, s := range page.Sessions {
 			allIDs = append(allIDs, s.ID)
@@ -646,7 +646,7 @@ func TestT20_TotalConsistentAcrossPages(t *testing.T) {
 
 	var page1 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page1))
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	require.NotEmpty(t, page1.NextCursor, "need at least 2 pages for this test")
 
@@ -656,7 +656,7 @@ func TestT20_TotalConsistentAcrossPages(t *testing.T) {
 
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
-	resp2.Body.Close()
+	_ = resp2.Body.Close()
 
 	assert.Equal(t, page1.Total, page2.Total,
 		"total should be consistent across pages: page1=%d, page2=%d", page1.Total, page2.Total)
@@ -669,7 +669,7 @@ func TestT21_ToolCallGrouping(t *testing.T) {
 	// sess-alpha has 2 tool calls on message ordinal 1
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-alpha/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var messages []api.MessageWithToolCalls
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&messages))
@@ -705,7 +705,7 @@ func TestT22_SessionOrdering(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -740,7 +740,7 @@ func TestT23_ContentTypeJSON(t *testing.T) {
 		t.Run(ep, func(t *testing.T) {
 			resp, err := http.Get(env.server.URL + ep)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			ct := resp.Header.Get("Content-Type")
 			assert.Contains(t, ct, "application/json",
@@ -756,7 +756,7 @@ func TestT24_ToolCallsNeverNull(t *testing.T) {
 	// sess-gamma has no tool calls at all
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-gamma/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Decode as raw JSON to check the actual shape
 	var rawMessages []json.RawMessage
@@ -785,7 +785,7 @@ func TestT25_PaginationWithFilters(t *testing.T) {
 	// Alice has 2 sessions (sess-alpha, sess-gamma). Paginate with limit=1.
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=alice@dev.io&limit=1")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page1 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page1))
@@ -797,7 +797,7 @@ func TestT25_PaginationWithFilters(t *testing.T) {
 	// Fetch second page
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=alice@dev.io&limit=1&cursor=" + page1.NextCursor)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
@@ -829,7 +829,7 @@ func TestT26_InvalidDateFormat(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := http.Get(env.server.URL + "/api/v1/sessions?" + tc.query)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusBadRequest, resp.StatusCode,
 				"invalid date %q should return 400", tc.query)
@@ -844,7 +844,7 @@ func TestT27_ErrorResponseShape(t *testing.T) {
 	t.Run("404 session not found", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions/nonexistent-id-12345")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 
@@ -857,7 +857,7 @@ func TestT27_ErrorResponseShape(t *testing.T) {
 	t.Run("400 malformed cursor", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions?cursor=not-valid-base64!!!")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
@@ -874,7 +874,7 @@ func TestT28_EmptySessionsArrayNotNull(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=nobody@nowhere.com")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var raw map[string]json.RawMessage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&raw))
@@ -891,7 +891,7 @@ func TestT29_SessionDetailAllFields(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-alpha")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -918,7 +918,7 @@ func TestT30_MetadataEndpointsSortedAndDeduped(t *testing.T) {
 	t.Run("users sorted by name", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/users")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var users []store.UserInfo
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&users))
@@ -933,7 +933,7 @@ func TestT30_MetadataEndpointsSortedAndDeduped(t *testing.T) {
 	t.Run("projects sorted by name", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/projects")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var projects []store.ProjectInfo
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&projects))
@@ -948,7 +948,7 @@ func TestT30_MetadataEndpointsSortedAndDeduped(t *testing.T) {
 	t.Run("agents sorted alphabetically", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/agents")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var agents []string
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&agents))
@@ -967,7 +967,7 @@ func TestT31_CORSHeaders(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"),
 		"API should have CORS Allow-Origin header")
@@ -982,7 +982,7 @@ func TestT32_MessageHasThinkingField(t *testing.T) {
 	// sess-gamma has a message with has_thinking=true
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-gamma/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var messages []api.MessageWithToolCalls
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&messages))
@@ -1000,7 +1000,7 @@ func TestT35_InvertedDateRangeReturnsEmpty(t *testing.T) {
 
 	resp, err := http.Get(env.server.URL + "/api/v1/sessions?date_from=2026-03-10&date_to=2026-02-01")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -1043,7 +1043,7 @@ func TestT36_SameTimestampPagination(t *testing.T) {
 		require.NoError(t, err)
 		var page store.SessionPage
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		for _, s := range page.Sessions {
 			allIDs = append(allIDs, s.ID)
 		}
@@ -1093,7 +1093,7 @@ func TestT37_MetadataExcludesHiddenSessions(t *testing.T) {
 	require.NoError(t, err)
 	var users []store.UserInfo
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&users))
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	userNames := make(map[string]bool)
 	for _, u := range users {
@@ -1110,7 +1110,7 @@ func TestT37_MetadataExcludesHiddenSessions(t *testing.T) {
 	require.NoError(t, err)
 	var projects []store.ProjectInfo
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&projects))
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	projectSet := make(map[string]bool)
 	for _, p := range projects {
@@ -1124,7 +1124,7 @@ func TestT37_MetadataExcludesHiddenSessions(t *testing.T) {
 	require.NoError(t, err)
 	var agents []string
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&agents))
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	agentSet := make(map[string]bool)
 	for _, a := range agents {
@@ -1143,14 +1143,14 @@ func TestT38_EmptyFilterParamsAreNoOps(t *testing.T) {
 	require.NoError(t, err)
 	var page1 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp1.Body).Decode(&page1))
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 
 	// Empty string filters
 	resp2, err := http.Get(env.server.URL + "/api/v1/sessions?user_id=&project_id=&agent_type=")
 	require.NoError(t, err)
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
-	resp2.Body.Close()
+	_ = resp2.Body.Close()
 
 	assert.Equal(t, page1.Total, page2.Total, "empty filter params should not affect results")
 	require.Len(t, page2.Sessions, len(page1.Sessions))
@@ -1427,7 +1427,7 @@ func TestSearch(t *testing.T) {
 	t.Run("S20_ContentType", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=login")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	})
 
@@ -1435,7 +1435,7 @@ func TestSearch(t *testing.T) {
 	t.Run("S21_CORSHeaders", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=login")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 	})
 
@@ -1514,7 +1514,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL1_LookupByShortSHA", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var results []store.GitLinkResult
@@ -1529,7 +1529,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL2_LookupByFullSHA", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var results []store.GitLinkResult
@@ -1541,7 +1541,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL3_LookupByPRURL", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?pr=https://github.com/alice/frontend/pull/10")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var results []store.GitLinkResult
@@ -1556,7 +1556,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL4_LookupNoParams400", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 400, resp.StatusCode)
 		var body map[string]string
@@ -1567,7 +1567,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL5_LookupNonexistentSHA", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=0000000")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
@@ -1579,7 +1579,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL6_LookupNonexistentPRURL", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?pr=https://github.com/nobody/nope/pull/999")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
@@ -1592,7 +1592,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL7_ResultHasAllExpectedFields", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var rawResults []map[string]interface{}
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&rawResults))
@@ -1612,7 +1612,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL8_ResultContainsCorrectMetadata", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var results []store.GitLinkResult
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&results))
@@ -1631,7 +1631,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL9_MediumConfidencePRLink", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?pr=https://github.com/carol/infra/pull/99")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var results []store.GitLinkResult
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&results))
@@ -1645,7 +1645,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL10_ListSessionsIncludesCommitCount", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions?limit=100")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var page store.SessionPage
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -1663,7 +1663,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL11_ListSessionsCommitCountZeroForNoLinks", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions?limit=100")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var page store.SessionPage
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -1684,7 +1684,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL12_GetSessionIncludesCommitCount", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-alpha")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var sess store.Session
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&sess))
@@ -1694,7 +1694,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL13_GetSessionCommitCountZero", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-beta")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var sess store.Session
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&sess))
@@ -1708,7 +1708,7 @@ func TestGitLinks(t *testing.T) {
 		for _, sha := range shas {
 			resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=" + sha)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			var results []store.GitLinkResult
 			require.NoError(t, json.NewDecoder(resp.Body).Decode(&results))
@@ -1720,7 +1720,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL15_CommitCountMatchesTotalLinkCount", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions/sess-multicommit")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var sess store.Session
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&sess))
@@ -1732,7 +1732,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL16_SearchSHAAutoRecognizes", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var page store.SearchPage
@@ -1747,7 +1747,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL17_SearchFullSHAAutoRecognizes", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=f7e8d9c0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var page store.SearchPage
@@ -1759,7 +1759,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL18_SearchPRURLAutoRecognizes", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=https://github.com/alice/frontend/pull/10")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var page store.SearchPage
@@ -1773,7 +1773,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL19_SearchNonMatchingSHAFallsThrough", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=0000000deadbeef")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		// Should not error — falls through to FTS (may return empty or FTS results)
@@ -1782,7 +1782,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL20_SearchNonHexDoesNotTriggerSHARecognition", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=login")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		var page store.SearchPage
@@ -1801,7 +1801,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL21_SearchAutoRecognitionResponseShape", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/search?q=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var raw map[string]interface{}
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&raw))
@@ -1828,7 +1828,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL23_ContentTypeJSON", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 	})
@@ -1836,7 +1836,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL24_CORSHeaders", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.NotEmpty(t, resp.Header.Get("Access-Control-Allow-Origin"))
 	})
@@ -1844,7 +1844,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL25_EmptyResultIsArrayNotNull", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=0000000")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
@@ -1859,7 +1859,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL26_SHATooShortStillQueries", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		// 6-char prefix may or may not match — the API doesn't enforce minimum length
@@ -1868,7 +1868,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL27_BothSHAandPRParams", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/gitlinks?sha=a1b2c3d&pr=https://github.com/alice/frontend/pull/10")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, 200, resp.StatusCode)
 		// Implementation uses sha when both provided (sha branch takes priority in LookupGitLinks)
@@ -1893,7 +1893,7 @@ func TestGitLinks(t *testing.T) {
 
 			var page store.SessionPage
 			require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			allSessions = append(allSessions, page.Sessions...)
 			if page.NextCursor == "" {
@@ -1917,7 +1917,7 @@ func TestGitLinks(t *testing.T) {
 	t.Run("GL29_FilterByProjectCommitCountCorrect", func(t *testing.T) {
 		resp, err := http.Get(env.server.URL + "/api/v1/sessions?project_id=proj-frontend")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var page store.SessionPage
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))

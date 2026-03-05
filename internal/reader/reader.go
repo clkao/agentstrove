@@ -72,7 +72,7 @@ func NewReader(dbPath string) (*Reader, error) {
 
 	// Verify the connection works
 	if err := db.Ping(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
@@ -102,7 +102,7 @@ func (r *Reader) ReadSessionsSince(createdAfter string) ([]Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query sessions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sessions []Session
 	for rows.Next() {
@@ -131,7 +131,7 @@ func (r *Reader) ReadMessagesForSession(sessionID string) ([]Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []Message
 	for rows.Next() {
@@ -165,7 +165,7 @@ func (r *Reader) ReadToolCallsForSession(sessionID string) ([]ToolCall, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query tool calls: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var toolCalls []ToolCall
 	for rows.Next() {

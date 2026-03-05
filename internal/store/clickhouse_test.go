@@ -57,7 +57,7 @@ func setupTestStore(t *testing.T) *ClickHouseStore {
 	require.NoError(t, store.EnsureSchema(context.Background()), "ensure schema")
 
 	t.Cleanup(func() {
-		store.Close()
+		_ = store.Close()
 		dropConn, err := clickhouse.Open(&clickhouse.Options{
 			Addr:     []string{addr},
 			Protocol: clickhouse.Native,
@@ -67,15 +67,13 @@ func setupTestStore(t *testing.T) *ClickHouseStore {
 			},
 		})
 		if err == nil {
-			dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
-			dropConn.Close()
+			_ = dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
+			_ = dropConn.Close()
 		}
 	})
 
 	return store
 }
-
-func ptr[T any](v T) *T { return &v }
 
 // testTime returns a UTC time for use in test data.
 func testTime(year, month, day, hour int) *time.Time {

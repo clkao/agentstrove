@@ -80,10 +80,10 @@ func NewClickHouseStoreFromOptions(opts ConnectOptions) (*ClickHouseStore, error
 		return nil, fmt.Errorf("open clickhouse (bootstrap): %w", err)
 	}
 	if err := bootstrapConn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS "+opts.Database); err != nil {
-		bootstrapConn.Close()
+		_ = bootstrapConn.Close()
 		return nil, fmt.Errorf("create database %s: %w", opts.Database, err)
 	}
-	bootstrapConn.Close()
+	_ = bootstrapConn.Close()
 
 	conn, err := clickhouse.Open(mkOpts(opts.Database))
 	if err != nil {

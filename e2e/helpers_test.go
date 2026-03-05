@@ -66,15 +66,15 @@ func setupTestEnv(t *testing.T) *testEnv {
 	require.NoError(t, s.EnsureSchema(context.Background()))
 
 	t.Cleanup(func() {
-		s.Close()
+		_ = s.Close()
 		dropConn, err := clickhouse.Open(&clickhouse.Options{
 			Addr:     []string{addr},
 			Protocol: clickhouse.Native,
 			Auth:     clickhouse.Auth{Username: user, Password: password},
 		})
 		if err == nil {
-			dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
-			dropConn.Close()
+			_ = dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
+			_ = dropConn.Close()
 		}
 	})
 
@@ -100,7 +100,7 @@ func httpGet(t *testing.T, env *testEnv, path string) (int, []byte) {
 	t.Helper()
 	resp, err := http.Get(env.server.URL + path)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, body

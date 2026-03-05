@@ -122,18 +122,18 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	db.Close()
+	_ = db.Close()
 
 	code := m.Run()
 
-	os.RemoveAll(dir)
+	_ = os.RemoveAll(dir)
 	os.Exit(code)
 }
 
 func TestNewReaderOpensReadOnly(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Attempting to write should fail since connection is read-only
 	_, err = r.db.Exec("INSERT INTO sessions (id, project) VALUES ('x', 'y')")
@@ -143,7 +143,7 @@ func TestNewReaderOpensReadOnly(t *testing.T) {
 func TestReadSessionsSinceReturnsAll(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	sessions, err := r.ReadSessionsSince("")
 	require.NoError(t, err)
@@ -158,7 +158,7 @@ func TestReadSessionsSinceReturnsAll(t *testing.T) {
 func TestReadSessionsSinceIncremental(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	sessions, err := r.ReadSessionsSince("2026-01-01T10:00:00.000Z")
 	require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestReadSessionsSinceIncremental(t *testing.T) {
 func TestReadSessionsSinceFieldValues(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	sessions, err := r.ReadSessionsSince("")
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestReadSessionsSinceFieldValues(t *testing.T) {
 func TestReadMessagesForSession(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	msgs, err := r.ReadMessagesForSession("sess-1")
 	require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestReadMessagesForSession(t *testing.T) {
 func TestReadMessagesForSessionWithThinking(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	msgs, err := r.ReadMessagesForSession("sess-2")
 	require.NoError(t, err)
@@ -236,7 +236,7 @@ func TestReadMessagesForSessionWithThinking(t *testing.T) {
 func TestReadMessagesForSessionEmpty(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	msgs, err := r.ReadMessagesForSession("nonexistent")
 	require.NoError(t, err)
@@ -246,7 +246,7 @@ func TestReadMessagesForSessionEmpty(t *testing.T) {
 func TestReadToolCallsForSession(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	tcs, err := r.ReadToolCallsForSession("sess-2")
 	require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestReadToolCallsForSession(t *testing.T) {
 func TestReadToolCallsForSessionWithSubagent(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	tcs, err := r.ReadToolCallsForSession("sess-3")
 	require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestReadToolCallsForSessionWithSubagent(t *testing.T) {
 func TestReadToolCallsForSessionEmpty(t *testing.T) {
 	r, err := NewReader(testDBPath)
 	require.NoError(t, err)
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	tcs, err := r.ReadToolCallsForSession("sess-1")
 	require.NoError(t, err)

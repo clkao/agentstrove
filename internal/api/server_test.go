@@ -57,7 +57,7 @@ func setupTestAPI(t *testing.T) (*httptest.Server, *store.ClickHouseStore) {
 	require.NoError(t, s.EnsureSchema(context.Background()), "ensure schema")
 
 	t.Cleanup(func() {
-		s.Close()
+		_ = s.Close()
 		dropConn, err := clickhouse.Open(&clickhouse.Options{
 			Addr:     []string{addr},
 			Protocol: clickhouse.Native,
@@ -67,8 +67,8 @@ func setupTestAPI(t *testing.T) (*httptest.Server, *store.ClickHouseStore) {
 			},
 		})
 		if err == nil {
-			dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
-			dropConn.Close()
+			_ = dropConn.Exec(context.Background(), "DROP DATABASE IF EXISTS "+dbName)
+			_ = dropConn.Close()
 		}
 	})
 
@@ -155,7 +155,7 @@ func TestListSessions_ReturnsJSON(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -172,7 +172,7 @@ func TestListSessions_FilterByUserID(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?user_id=alice@example.com")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -188,7 +188,7 @@ func TestListSessions_FilterByProjectID(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?project_id=proj-backend")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -202,7 +202,7 @@ func TestListSessions_FilterByAgentType(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?agent_type=cursor")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -215,7 +215,7 @@ func TestListSessions_FilterByDateRange(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?date_from=2026-03-02&date_to=2026-03-02")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -228,7 +228,7 @@ func TestListSessions_InvalidDateFrom(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?date_from=not-a-date")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
@@ -238,7 +238,7 @@ func TestListSessions_InvalidDateTo(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?date_to=not-a-date")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
@@ -249,7 +249,7 @@ func TestListSessions_Pagination(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions?limit=1")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var page store.SessionPage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&page))
@@ -259,7 +259,7 @@ func TestListSessions_Pagination(t *testing.T) {
 	// Fetch next page
 	resp2, err := http.Get(ts.URL + "/api/v1/sessions?limit=1&cursor=" + page.NextCursor)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	var page2 store.SessionPage
 	require.NoError(t, json.NewDecoder(resp2.Body).Decode(&page2))
@@ -273,7 +273,7 @@ func TestGetSession_Found(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -288,7 +288,7 @@ func TestGetSession_NotFound(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions/nonexistent")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
@@ -299,7 +299,7 @@ func TestGetMessages_ReturnsMessagesWithToolCalls(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/messages")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -323,7 +323,7 @@ func TestListUsers(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/users")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -338,7 +338,7 @@ func TestListProjects(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/projects")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -353,7 +353,7 @@ func TestListAgents(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/agents")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -368,7 +368,7 @@ func TestSearch_ReturnsResults(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/search?q=login")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -382,7 +382,7 @@ func TestSearch_MissingQuery(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/search")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
@@ -393,7 +393,7 @@ func TestSearch_SHALookup(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/search?q=abc1234")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -409,7 +409,7 @@ func TestLookupGitLinks_BySHA(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/gitlinks?sha=abc1234")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -424,7 +424,7 @@ func TestLookupGitLinks_MissingParams(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/gitlinks")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
@@ -434,7 +434,7 @@ func TestSPAFallback(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/some/random/path")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// SPA fallback serves 200 (or 404 if no index.html — dist is empty in test)
 	// The important thing is it doesn't 500
@@ -446,7 +446,7 @@ func TestCORSHeaders(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
 }
@@ -457,7 +457,7 @@ func TestCORSPreflight(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodOptions, ts.URL+"/api/v1/sessions", nil)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	assert.Equal(t, "*", resp.Header.Get("Access-Control-Allow-Origin"))
@@ -468,7 +468,7 @@ func TestContentTypeJSON(t *testing.T) {
 
 	resp, err := http.Get(ts.URL + "/api/v1/sessions")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 }

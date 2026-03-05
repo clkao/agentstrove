@@ -55,7 +55,10 @@ func run() int {
 		}
 		if a == "-port" || a == "--port" {
 			if i+1 < len(args) {
-				fmt.Sscanf(args[i+1], "%d", &port)
+				if _, err := fmt.Sscanf(args[i+1], "%d", &port); err != nil {
+					fmt.Fprintf(os.Stderr, "invalid port: %s\n", args[i+1])
+					return 1
+				}
 			}
 		}
 		if a == "-force" || a == "--force" {
@@ -179,14 +182,14 @@ func runSync(configPath string, force, resetDB bool) int {
 		fmt.Fprintf(os.Stderr, "Error creating reader: %v\n", err)
 		return 1
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	s, err := openStore(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating store: %v\n", err)
 		return 1
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	if resetDB {
 		log.Printf("agentstrove sync: --reset-db specified, dropping and recreating database")
@@ -268,7 +271,7 @@ func runDaemon(configPath string) int {
 		fmt.Fprintf(os.Stderr, "Error creating daemon: %v\n", err)
 		return 1
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -308,7 +311,7 @@ func runServe(configPath string, portOverride int) int {
 		fmt.Fprintf(os.Stderr, "Error creating store: %v\n", err)
 		return 1
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 
 	apiServer := api.New(s)
 
@@ -349,7 +352,9 @@ func runServe(configPath string, portOverride int) int {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
-	httpServer.Shutdown(shutdownCtx)
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown error: %v", err)
+	}
 
 	log.Printf("agentstrove server stopped")
 
