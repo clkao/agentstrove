@@ -112,3 +112,31 @@ export interface GitLinkResult {
   confidence: string;
   message_ordinal: number;
 }
+
+export interface UserUsage {
+  user_id: string;
+  user_name: string;
+  agent_type: string;
+  project_name: string;
+  session_count: number;
+  message_count: number;
+  commit_count: number;
+}
+
+export interface DailyActivity {
+  date: string;
+  session_count: number;
+  message_count: number;
+}
+
+export interface HeatmapCell {
+  day_of_week: number;
+  hour: number;
+  session_count: number;
+}
+
+export interface ToolUsageStat {
+  tool_name: string;
+  category: string;
+  usage_count: number;
+}

@@ -15,6 +15,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1173,3 +1174,366 @@ func TestDogfood(t *testing.T) {
 
 // Ensure secrets package is imported (used indirectly via sync).
 var _ = secrets.MaskSecrets
+
+// --- Dogfood analytics setup ---
+
+var (
+	dogfoodOnce    sync.Once
+	sharedDogfood  *dogfoodEnv
+	dogfoodSkipMsg string
+)
+
+// setupDogfoodEnv returns a shared dogfoodEnv initialized once across all
+// standalone dogfood analytics tests. The ClickHouse database is not cleaned
+// up automatically (acceptable for ephemeral test databases).
+func setupDogfoodEnv(t *testing.T) *dogfoodEnv {
+	t.Helper()
+
+	dogfoodOnce.Do(func() {
+		dbPath := config.DefaultAgentsviewDBPath()
+		if dbPath == "" {
+			dogfoodSkipMsg = "no agentsview DB found at default path; skipping dogfood test"
+			return
+		}
+		if _, err := os.Stat(dbPath); err != nil {
+			dogfoodSkipMsg = fmt.Sprintf("agentsview DB not accessible: %v", err)
+			return
+		}
+
+		addr := clickhouseAddr()
+		user := clickhouseUser()
+		password := clickhousePassword()
+		dbName := fmt.Sprintf("test_dogfood_analytics_%s", randomHex(8))
+
+		chStore, err := store.NewClickHouseStoreWithAuth(addr, dbName, user, password)
+		if err != nil {
+			dogfoodSkipMsg = fmt.Sprintf("cannot create ClickHouse store: %v", err)
+			return
+		}
+
+		ctx := context.Background()
+		if err := chStore.EnsureSchema(ctx); err != nil {
+			_ = chStore.Close()
+			dogfoodSkipMsg = fmt.Sprintf("cannot ensure schema: %v", err)
+			return
+		}
+
+		r, err := reader.NewReader(dbPath)
+		if err != nil {
+			_ = chStore.Close()
+			dogfoodSkipMsg = fmt.Sprintf("cannot open reader: %v", err)
+			return
+		}
+
+		dir, err := os.MkdirTemp("", "dogfood-analytics-*")
+		if err != nil {
+			_ = r.Close()
+			_ = chStore.Close()
+			dogfoodSkipMsg = fmt.Sprintf("cannot create temp dir: %v", err)
+			return
+		}
+
+		cfg := &config.Config{
+			AgentsviewDBPath: dbPath,
+			DataDir:          dir,
+		}
+
+		engine, err := astSync.NewEngine(cfg, r, chStore)
+		if err != nil {
+			_ = r.Close()
+			_ = chStore.Close()
+			dogfoodSkipMsg = fmt.Sprintf("cannot create sync engine: %v", err)
+			return
+		}
+
+		result, err := engine.RunOnce(ctx)
+		_ = r.Close()
+		if err != nil {
+			_ = chStore.Close()
+			dogfoodSkipMsg = fmt.Sprintf("sync failed: %v", err)
+			return
+		}
+
+		srv := api.New(chStore)
+		ts := httptest.NewServer(srv)
+
+		sharedDogfood = &dogfoodEnv{store: chStore, server: ts, syncResult: result}
+	})
+
+	if dogfoodSkipMsg != "" {
+		t.Skip(dogfoodSkipMsg)
+	}
+	if sharedDogfood == nil {
+		t.Fatal("dogfood env not initialized")
+	}
+	return sharedDogfood
+}
+
+// --- Dogfood analytics tests (DA1-DA14) ---
+
+// DA1: Usage overview returns data from real synced sessions.
+func TestDogfoodAnalytics_UsageReturnsData(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var results []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &results))
+	assert.Greater(t, len(results), 0, "should have usage data")
+	t.Logf("usage rows: %d", len(results))
+}
+
+// DA2: All user_ids in usage also appear in /users endpoint.
+func TestDogfoodAnalytics_UsageUserIDsValid(t *testing.T) {
+	env := setupDogfoodEnv(t)
+
+	status, body := dogfoodGet(t, env, "/api/v1/users")
+	require.Equal(t, 200, status)
+	var users []store.UserInfo
+	require.NoError(t, json.Unmarshal(body, &users))
+	knownUsers := make(map[string]bool)
+	for _, u := range users {
+		knownUsers[u.ID] = true
+	}
+
+	status, body = dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var results []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &results))
+	require.NotEmpty(t, results)
+
+	for _, r := range results {
+		assert.True(t, knownUsers[r.UserID],
+			"usage user_id %q not found in /users", r.UserID)
+	}
+}
+
+// DA3: All usage rows have session_count > 0.
+func TestDogfoodAnalytics_UsageSessionCountPositive(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var results []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &results))
+	require.NotEmpty(t, results)
+
+	for _, r := range results {
+		assert.Greater(t, r.SessionCount, 0,
+			"user %s/%s/%s: session_count should be > 0", r.UserID, r.AgentType, r.ProjectName)
+	}
+}
+
+// DA4: Sum of session_counts roughly matches /sessions total.
+func TestDogfoodAnalytics_UsageTotalReasonable(t *testing.T) {
+	env := setupDogfoodEnv(t)
+
+	status, body := dogfoodGet(t, env, "/api/v1/sessions?limit=1")
+	require.Equal(t, 200, status)
+	var page store.SessionPage
+	require.NoError(t, json.Unmarshal(body, &page))
+
+	status, body = dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var results []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &results))
+
+	usageSum := 0
+	for _, r := range results {
+		usageSum += r.SessionCount
+	}
+
+	t.Logf("usage session_count sum: %d, sessions total: %d", usageSum, page.Total)
+	// Usage groups by user+agent+project, so sum should equal total browsable sessions.
+	// Allow 10% margin for edge cases (e.g. grouping differences).
+	assert.InDelta(t, float64(page.Total), float64(usageSum), float64(page.Total)*0.1+1,
+		"usage sum should roughly match sessions total")
+}
+
+// DA5: Heatmap returns data from real synced sessions.
+func TestDogfoodAnalytics_HeatmapReturnsData(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/heatmap")
+	require.Equal(t, 200, status)
+	var cells []store.HeatmapCell
+	require.NoError(t, json.Unmarshal(body, &cells))
+	assert.Greater(t, len(cells), 0, "should have heatmap data")
+	t.Logf("heatmap cells: %d", len(cells))
+}
+
+// DA6: All heatmap day_of_week values in [1,7].
+func TestDogfoodAnalytics_HeatmapValidDays(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/heatmap")
+	require.Equal(t, 200, status)
+	var cells []store.HeatmapCell
+	require.NoError(t, json.Unmarshal(body, &cells))
+	require.NotEmpty(t, cells)
+
+	for _, c := range cells {
+		assert.GreaterOrEqual(t, c.DayOfWeek, 1, "day_of_week must be >= 1")
+		assert.LessOrEqual(t, c.DayOfWeek, 7, "day_of_week must be <= 7")
+	}
+}
+
+// DA7: All heatmap hour values in [0,23].
+func TestDogfoodAnalytics_HeatmapValidHours(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/heatmap")
+	require.Equal(t, 200, status)
+	var cells []store.HeatmapCell
+	require.NoError(t, json.Unmarshal(body, &cells))
+	require.NotEmpty(t, cells)
+
+	for _, c := range cells {
+		assert.GreaterOrEqual(t, c.Hour, 0, "hour must be >= 0")
+		assert.LessOrEqual(t, c.Hour, 23, "hour must be <= 23")
+	}
+}
+
+// DA8: At least some weekday (dow 1-5) cells have activity.
+func TestDogfoodAnalytics_HeatmapWeekdayActivity(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/heatmap")
+	require.Equal(t, 200, status)
+	var cells []store.HeatmapCell
+	require.NoError(t, json.Unmarshal(body, &cells))
+	require.NotEmpty(t, cells)
+
+	weekdayActivity := 0
+	for _, c := range cells {
+		if c.DayOfWeek >= 1 && c.DayOfWeek <= 5 && c.SessionCount > 0 {
+			weekdayActivity++
+		}
+	}
+	assert.Greater(t, weekdayActivity, 0, "should have weekday activity")
+	t.Logf("weekday cells with activity: %d", weekdayActivity)
+}
+
+// DA9: Tool usage returns data from real synced sessions.
+func TestDogfoodAnalytics_ToolsReturnsData(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/tools")
+	require.Equal(t, 200, status)
+	var tools []store.ToolUsageStat
+	require.NoError(t, json.Unmarshal(body, &tools))
+	assert.Greater(t, len(tools), 0, "should have tool usage data")
+	t.Logf("tool usage rows: %d", len(tools))
+}
+
+// DA10: At least one common Claude tool is present in results.
+func TestDogfoodAnalytics_ToolsCommonToolsPresent(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/tools")
+	require.Equal(t, 200, status)
+	var tools []store.ToolUsageStat
+	require.NoError(t, json.Unmarshal(body, &tools))
+	require.NotEmpty(t, tools)
+
+	commonTools := map[string]bool{
+		"Read": false, "Write": false, "Edit": false,
+		"Bash": false, "Grep": false, "Glob": false,
+	}
+	for _, tool := range tools {
+		if _, ok := commonTools[tool.ToolName]; ok {
+			commonTools[tool.ToolName] = true
+		}
+	}
+
+	found := false
+	for name, present := range commonTools {
+		if present {
+			found = true
+			t.Logf("common tool found: %s", name)
+		}
+	}
+	assert.True(t, found, "at least one of Read, Write, Edit, Bash, Grep, Glob should be present")
+}
+
+// DA11: Tool usage results ordered by usage_count descending.
+func TestDogfoodAnalytics_ToolsOrderedDESC(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/tools")
+	require.Equal(t, 200, status)
+	var tools []store.ToolUsageStat
+	require.NoError(t, json.Unmarshal(body, &tools))
+	require.NotEmpty(t, tools)
+
+	for i := 1; i < len(tools); i++ {
+		assert.GreaterOrEqual(t, tools[i-1].UsageCount, tools[i].UsageCount,
+			"tools[%d] (%s: %d) should be >= tools[%d] (%s: %d)",
+			i-1, tools[i-1].ToolName, tools[i-1].UsageCount,
+			i, tools[i].ToolName, tools[i].UsageCount)
+	}
+}
+
+// DA12: With a narrow date range, fewer or equal results than all-time.
+func TestDogfoodAnalytics_DateFilterNarrows(t *testing.T) {
+	env := setupDogfoodEnv(t)
+
+	// All-time usage
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var allTime []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &allTime))
+	require.NotEmpty(t, allTime)
+
+	// Single-day usage: use today's date which likely has less data than all-time
+	today := time.Now().Format("2006-01-02")
+	status, body = dogfoodGet(t, env, fmt.Sprintf("/api/v1/analytics/usage?date_from=%s&date_to=%s", today, today))
+	require.Equal(t, 200, status)
+	var filtered []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &filtered))
+
+	allTimeSum := 0
+	for _, r := range allTime {
+		allTimeSum += r.SessionCount
+	}
+	filteredSum := 0
+	for _, r := range filtered {
+		filteredSum += r.SessionCount
+	}
+
+	t.Logf("all-time rows: %d (sum %d), filtered rows: %d (sum %d)",
+		len(allTime), allTimeSum, len(filtered), filteredSum)
+	assert.LessOrEqual(t, filteredSum, allTimeSum,
+		"filtered session count should be <= all-time")
+}
+
+// DA13: All 3 analytics endpoints respond within 2 seconds each.
+func TestDogfoodAnalytics_Performance(t *testing.T) {
+	env := setupDogfoodEnv(t)
+
+	endpoints := []string{
+		"/api/v1/analytics/usage",
+		"/api/v1/analytics/heatmap",
+		"/api/v1/analytics/tools",
+	}
+
+	for _, ep := range endpoints {
+		start := time.Now()
+		status, _ := dogfoodGet(t, env, ep)
+		elapsed := time.Since(start)
+		require.Equal(t, 200, status, "%s should return 200", ep)
+		assert.Less(t, elapsed, 2*time.Second,
+			"%s took %s, should be < 2s", ep, elapsed.Round(time.Millisecond))
+		t.Logf("%s: %s", ep, elapsed.Round(time.Millisecond))
+	}
+}
+
+// DA14: No empty user_id, no negative counts in usage results.
+func TestDogfoodAnalytics_FieldsValid(t *testing.T) {
+	env := setupDogfoodEnv(t)
+	status, body := dogfoodGet(t, env, "/api/v1/analytics/usage")
+	require.Equal(t, 200, status)
+	var results []store.UserUsage
+	require.NoError(t, json.Unmarshal(body, &results))
+	require.NotEmpty(t, results)
+
+	for _, r := range results {
+		assert.NotEmpty(t, r.UserID, "user_id should not be empty")
+		assert.NotEmpty(t, r.UserName, "user_name should not be empty")
+		assert.GreaterOrEqual(t, r.SessionCount, 0,
+			"session_count should not be negative for %s", r.UserID)
+		assert.GreaterOrEqual(t, r.MessageCount, 0,
+			"message_count should not be negative for %s", r.UserID)
+	}
+}
