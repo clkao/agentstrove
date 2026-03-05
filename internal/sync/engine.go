@@ -21,6 +21,20 @@ import (
 // a full re-sync of all sessions.
 const SyncVersion = 1
 
+const syncChunkSize = 50
+
+// preparedSession holds the transformed data for one session, ready for batch writing.
+type preparedSession struct {
+	readerSession reader.Session
+	storeSession  store.Session
+	messages      []store.Message
+	toolCalls     []store.ToolCall
+	gitLinks      []store.GitLink
+	maxOrdinal    int
+	secretCount   int
+	err           error
+}
+
 // SyncResult reports what happened during a single RunOnce invocation.
 type SyncResult struct {
 	SessionsSynced  int
@@ -67,60 +81,137 @@ func (e *Engine) ForceResync() {
 func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 	result := &SyncResult{Errors: make(map[string]error)}
 
-	// Full resync if the sync version has changed.
 	if e.state.NeedsFullResync(SyncVersion) {
 		e.state.ResetForResync(SyncVersion)
 	}
 
-	sessions, err := e.reader.ReadSessionsSince(e.state.LastSessionCreatedAt)
+	sessions, err := e.reader.ReadSessionsSince("")
 	if err != nil {
 		return nil, fmt.Errorf("read sessions: %w", err)
 	}
 
-	userID, userName := e.config.ResolvedUserIdentity()
-	projectCache := make(map[string][2]string) // path → {id, name}
-
-	log.Printf("sync: found %d sessions to check", len(sessions))
-
+	// Classify: split into changed vs unchanged
+	var changed []reader.Session
 	for _, sess := range sessions {
-		if !e.state.IsSessionChanged(sess.ID, sess.FileHash) {
+		if e.state.IsSessionChanged(sess.ID, sess.FileHash) {
+			changed = append(changed, sess)
+		} else {
 			result.SessionsSkipped++
-			continue
-		}
-
-		if err := e.syncSession(ctx, sess, userID, userName, projectCache, result); err != nil {
-			result.Errors[sess.ID] = err
-			continue
-		}
-
-		result.SessionsSynced++
-
-		if result.SessionsSynced%100 == 0 {
-			log.Printf("sync: %d/%d sessions synced", result.SessionsSynced, len(sessions))
 		}
 	}
 
-	if err := e.state.Save(e.statePath); err != nil {
-		return result, fmt.Errorf("save sync state: %w", err)
+	log.Printf("sync: %d changed, %d unchanged out of %d sessions", len(changed), result.SessionsSkipped, len(sessions))
+
+	if len(changed) == 0 {
+		if err := e.state.Save(e.statePath); err != nil {
+			return result, fmt.Errorf("save sync state: %w", err)
+		}
+		return result, nil
+	}
+
+	userID, userName := e.config.ResolvedUserIdentity()
+	projectCache := make(map[string][2]string)
+
+	// Process in chunks
+	for i := 0; i < len(changed); i += syncChunkSize {
+		end := i + syncChunkSize
+		if end > len(changed) {
+			end = len(changed)
+		}
+		chunk := changed[i:end]
+
+		if err := e.syncChunk(ctx, chunk, userID, userName, projectCache, result); err != nil {
+			return result, fmt.Errorf("sync chunk: %w", err)
+		}
+
+		// Save watermark after each chunk for partial progress
+		if err := e.state.Save(e.statePath); err != nil {
+			return result, fmt.Errorf("save sync state: %w", err)
+		}
+
+		log.Printf("sync: %d/%d sessions synced", result.SessionsSynced, len(changed))
 	}
 
 	return result, nil
 }
 
-// syncSession handles one session: reads only new messages and tool calls
-// (ordinal > lastOrdinal), masks secrets, converts to store types, and writes.
-// The session row is always re-written to refresh metadata.
-func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, userName string, projectCache map[string][2]string, result *SyncResult) error {
+// syncChunk writes a batch of prepared sessions to the store in a single WriteBatch call,
+// then advances watermarks for successfully written sessions.
+func (e *Engine) syncChunk(ctx context.Context, chunk []reader.Session, userID, userName string, projectCache map[string][2]string, result *SyncResult) error {
+	// Prepare all sessions in chunk
+	prepared := make([]preparedSession, len(chunk))
+	for i, sess := range chunk {
+		prepared[i] = e.prepareSession(sess, userID, userName, projectCache)
+	}
+
+	// Collect successful preparations into flat slices
+	var allSessions []store.Session
+	var allMessages []store.Message
+	var allToolCalls []store.ToolCall
+	var allGitLinks []store.GitLink
+
+	for _, p := range prepared {
+		if p.err != nil {
+			result.Errors[p.readerSession.ID] = p.err
+			continue
+		}
+		allSessions = append(allSessions, p.storeSession)
+		allMessages = append(allMessages, p.messages...)
+		allToolCalls = append(allToolCalls, p.toolCalls...)
+		allGitLinks = append(allGitLinks, p.gitLinks...)
+	}
+
+	// Batch write
+	if len(allSessions) > 0 {
+		if err := e.store.WriteBatch(ctx, "", allSessions, allMessages, allToolCalls); err != nil {
+			// Batch failed — record error for all sessions in this chunk
+			for _, p := range prepared {
+				if p.err == nil {
+					result.Errors[p.readerSession.ID] = fmt.Errorf("batch write: %w", err)
+				}
+			}
+			return nil // don't abort the whole sync, just skip this chunk
+		}
+	}
+
+	// Git links (already accepts cross-session slices)
+	if len(allGitLinks) > 0 {
+		if err := e.store.WriteGitLinks(ctx, "", allGitLinks); err != nil {
+			log.Printf("sync: batch git link write error: %v", err)
+		}
+	}
+
+	// Advance watermarks only for successfully written sessions
+	for _, p := range prepared {
+		if p.err != nil {
+			continue
+		}
+		if _, hasErr := result.Errors[p.readerSession.ID]; hasErr {
+			continue
+		}
+		e.state.MarkSynced(p.readerSession.ID, p.readerSession.FileHash, p.maxOrdinal, p.readerSession.CreatedAt)
+		e.state.TotalSynced++
+		e.state.TotalMasked += int64(p.secretCount)
+		result.SecretsDetected += p.secretCount
+		result.SessionsSynced++
+	}
+
+	return nil
+}
+
+// prepareSession reads and transforms one session's data for batch writing.
+// Does not write to the store or mutate sync state.
+func (e *Engine) prepareSession(sess reader.Session, userID, userName string, projectCache map[string][2]string) preparedSession {
 	lastOrdinal := e.state.GetLastOrdinal(sess.ID)
 
 	allMsgs, err := e.reader.ReadMessagesForSession(sess.ID)
 	if err != nil {
-		return fmt.Errorf("read messages for %s: %w", sess.ID, err)
+		return preparedSession{readerSession: sess, err: fmt.Errorf("read messages for %s: %w", sess.ID, err)}
 	}
 
 	allTCs, err := e.reader.ReadToolCallsForSession(sess.ID)
 	if err != nil {
-		return fmt.Errorf("read tool calls for %s: %w", sess.ID, err)
+		return preparedSession{readerSession: sess, err: fmt.Errorf("read tool calls for %s: %w", sess.ID, err)}
 	}
 
 	// Filter to only messages and tool calls not yet synced.
@@ -166,12 +257,12 @@ func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, u
 		SourceCreatedAt:  sess.CreatedAt,
 	}
 
+	secretCount := 0
+
 	storeMsgs := make([]store.Message, len(newMsgs))
 	for i, m := range newMsgs {
 		masked := secrets.MaskSecrets(sanitizeUTF8(m.Content))
-		result.SecretsDetected += masked.SecretCount
-		e.state.TotalMasked += int64(masked.SecretCount)
-
+		secretCount += masked.SecretCount
 		storeMsgs[i] = store.Message{
 			OrgID:         "",
 			SessionID:     m.SessionID,
@@ -188,19 +279,15 @@ func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, u
 	storeTCs := make([]store.ToolCall, len(newTCs))
 	for i, tc := range newTCs {
 		maskedInput := secrets.MaskSecrets(sanitizeUTF8(tc.InputJSON))
-		result.SecretsDetected += maskedInput.SecretCount
-		e.state.TotalMasked += int64(maskedInput.SecretCount)
-
+		secretCount += maskedInput.SecretCount
 		maskedResult := secrets.MaskSecrets(sanitizeUTF8(tc.ResultContent))
-		result.SecretsDetected += maskedResult.SecretCount
-		e.state.TotalMasked += int64(maskedResult.SecretCount)
+		secretCount += maskedResult.SecretCount
 
 		var rcl *int
 		if tc.ResultContentLength > 0 {
 			v := tc.ResultContentLength
 			rcl = &v
 		}
-
 		storeTCs[i] = store.ToolCall{
 			OrgID:               "",
 			MessageOrdinal:      tc.MessageOrdinal,
@@ -216,24 +303,13 @@ func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, u
 		}
 	}
 
-	if err := e.store.WriteSession(ctx, "", storeSession, storeMsgs, storeTCs); err != nil {
-		return fmt.Errorf("write session %s: %w", sess.ID, err)
-	}
-
-	// Extract git links from new tool calls (non-fatal on error).
+	// Extract git links
 	links := gitlinks.ExtractGitLinks(storeTCs, storeMsgs)
-	if len(links) > 0 {
-		// Set OrgID on each link before writing.
-		for i := range links {
-			links[i].OrgID = ""
-			links[i].UserID = userID
-		}
-		if err := e.store.WriteGitLinks(ctx, "", links); err != nil {
-			log.Printf("sync: git link write error for %s: %v", sess.ID, err)
-		}
+	for i := range links {
+		links[i].OrgID = ""
+		links[i].UserID = userID
 	}
 
-	// Compute max ordinal of new messages for watermark advance.
 	maxOrdinal := lastOrdinal
 	for _, m := range newMsgs {
 		if m.Ordinal > maxOrdinal {
@@ -241,10 +317,15 @@ func (e *Engine) syncSession(ctx context.Context, sess reader.Session, userID, u
 		}
 	}
 
-	e.state.MarkSynced(sess.ID, sess.FileHash, maxOrdinal, sess.CreatedAt)
-	e.state.TotalSynced++
-
-	return nil
+	return preparedSession{
+		readerSession: sess,
+		storeSession:  storeSession,
+		messages:      storeMsgs,
+		toolCalls:     storeTCs,
+		gitLinks:      links,
+		maxOrdinal:    maxOrdinal,
+		secretCount:   secretCount,
+	}
 }
 
 // sanitizeUTF8 replaces invalid UTF-8 sequences with the Unicode replacement character.
