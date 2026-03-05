@@ -710,10 +710,11 @@ func (s *ClickHouseStore) Search(ctx context.Context, orgID string, query Search
 		sessionArgs = append(sessionArgs, query.DateTo)
 	}
 
-	sessionJoinCond := ""
-	if len(sessionFilters) > 0 {
-		sessionJoinCond = " AND " + strings.Join(sessionFilters, " AND ")
-	}
+	// Always exclude ghost and subagent sessions from search results
+	sessionFilters = append(sessionFilters, "s.parent_session_id = ''")
+	sessionFilters = append(sessionFilters, "s.user_message_count > 0")
+
+	sessionJoinCond := " AND " + strings.Join(sessionFilters, " AND ")
 
 	// Search messages
 	msgQ := fmt.Sprintf(`SELECT
