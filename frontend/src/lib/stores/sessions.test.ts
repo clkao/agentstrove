@@ -6,11 +6,13 @@ import type { Session, SessionPage } from "../api/types.js";
 
 vi.mock("../api/client.js", () => ({
   listSessions: vi.fn(),
+  getSession: vi.fn(),
 }));
 
-import { listSessions } from "../api/client.js";
+import { listSessions, getSession } from "../api/client.js";
 
 const mockListSessions = vi.mocked(listSessions);
+const mockGetSession = vi.mocked(getSession);
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
@@ -129,11 +131,24 @@ describe("SessionsStore", () => {
       expect(sessions.activeSession).toEqual(s);
     });
 
-    it("returns null for activeSession when id not in list", async () => {
+    it("returns null for activeSession when id not in list (before fetch)", async () => {
       mockListSessions.mockResolvedValue(makePage([makeSession()]));
+      mockGetSession.mockResolvedValue(makeSession({ id: "nonexistent" }));
       await sessions.load();
       sessions.selectSession("nonexistent");
       expect(sessions.activeSession).toBeNull();
+    });
+
+    it("fetches session from API when id not in list", async () => {
+      const fetched = makeSession({ id: "remote-1", user_name: "Remote" });
+      mockListSessions.mockResolvedValue(makePage([makeSession()]));
+      mockGetSession.mockResolvedValue(fetched);
+      await sessions.load();
+      sessions.selectSession("remote-1");
+      expect(mockGetSession).toHaveBeenCalledWith("remote-1");
+      await vi.waitFor(() => {
+        expect(sessions.activeSession).toEqual(fetched);
+      });
     });
   });
 

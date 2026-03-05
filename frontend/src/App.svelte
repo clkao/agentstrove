@@ -22,7 +22,7 @@
   $effect(() => {
     const sessionId = router.sessionId;
     if (sessionId) {
-      sessions.ensureSession(sessionId);
+      sessions.selectSession(sessionId);
       messages.load(sessionId);
     } else {
       sessions.selectSession(null);

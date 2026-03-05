@@ -11,10 +11,13 @@
     content: string;
     label?: string;
     toolCall?: ToolCall;
+    startExpanded?: boolean;
   }
 
-  let { content, label, toolCall }: Props = $props();
+  let { content, label, toolCall, startExpanded = false }: Props = $props();
   let collapsed: boolean = $state(true);
+
+  $effect(() => { if (startExpanded) collapsed = false; });
 
   let previewLine = $derived(
     content.split("\n")[0]?.slice(0, 100) ?? "",

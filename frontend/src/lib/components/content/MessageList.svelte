@@ -8,15 +8,16 @@
     messages: MessageWithToolCalls[];
     developerName?: string;
     agentName?: string;
+    highlightOrdinal?: number | null;
   }
 
-  let { messages, developerName, agentName }: Props = $props();
+  let { messages, developerName, agentName, highlightOrdinal = null }: Props = $props();
 </script>
 
 <div class="message-list">
   {#each messages as message (message.ordinal)}
-    <div data-ordinal={message.ordinal}>
-      <MessageContent {message} {developerName} {agentName} />
+    <div data-ordinal={message.ordinal} class:highlight-target={highlightOrdinal === message.ordinal}>
+      <MessageContent {message} {developerName} {agentName} expandTools={highlightOrdinal === message.ordinal} />
     </div>
   {/each}
 </div>
@@ -27,5 +28,14 @@
     flex-direction: column;
     gap: 8px;
     padding: 8px 0;
+  }
+
+  .highlight-target {
+    animation: highlight-fade 3s ease-out;
+  }
+
+  @keyframes highlight-fade {
+    0% { background: var(--accent-yellow, #fef08a); }
+    100% { background: transparent; }
   }
 </style>

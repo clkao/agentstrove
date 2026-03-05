@@ -16,9 +16,10 @@
     message: MessageWithToolCalls;
     developerName?: string;
     agentName?: string;
+    expandTools?: boolean;
   }
 
-  let { message, developerName, agentName }: Props = $props();
+  let { message, developerName, agentName, expandTools = false }: Props = $props();
 
   let segments = $derived(
     enrichSegments(
@@ -71,6 +72,7 @@
           content={segment.content}
           label={segment.label}
           toolCall={segment.toolCall}
+          startExpanded={expandTools}
         />
       {:else if segment.type === "code"}
         <CodeBlock content={segment.content} language={segment.label} />
