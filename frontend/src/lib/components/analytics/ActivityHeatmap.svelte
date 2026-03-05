@@ -30,15 +30,15 @@
 <div class="heatmap-card card">
   <h2>Activity Heatmap <span class="tz">(UTC)</span></h2>
   <div class="heatmap-wrapper">
-    <div class="hour-labels">
-      {#each Array(24) as _, h}
-        <span class="hour-label">{h}</span>
+    <div class="day-labels">
+      {#each dayLabels as day}
+        <span class="day-label">{day}</span>
       {/each}
     </div>
     <div class="grid-container">
-      <div class="day-labels">
-        {#each dayLabels as day}
-          <span class="day-label">{day}</span>
+      <div class="hour-labels">
+        {#each Array(24) as _, h}
+          <span class="hour-label" class:hidden={h % 3 !== 0}>{h}</span>
         {/each}
       </div>
       <div class="heatmap-grid">
@@ -80,21 +80,22 @@
     gap: 4px;
   }
 
-  .hour-labels {
+  .day-labels {
     display: flex;
     flex-direction: column;
     gap: 2px;
     padding-top: 18px;
   }
 
-  .hour-label {
+  .day-label {
     height: 14px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-muted);
-    width: 16px;
+    font-weight: 500;
+    width: 28px;
   }
 
   .grid-container {
@@ -102,26 +103,28 @@
     min-width: 0;
   }
 
-  .day-labels {
+  .hour-labels {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(24, 1fr);
     gap: 2px;
     margin-bottom: 2px;
   }
 
-  .day-label {
+  .hour-label {
     text-align: center;
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-muted);
-    font-weight: 500;
+  }
+
+  .hour-label.hidden {
+    visibility: hidden;
   }
 
   .heatmap-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-template-rows: repeat(24, 14px);
+    grid-template-columns: repeat(24, 1fr);
+    grid-template-rows: repeat(7, 14px);
     gap: 2px;
-    grid-auto-flow: column;
   }
 
   .cell {

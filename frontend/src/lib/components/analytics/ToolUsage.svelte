@@ -4,28 +4,34 @@
   import { analytics } from "../../stores/analytics.svelte.js";
   import BarChart from "./BarChart.svelte";
 
-  const categoryColors: Record<string, string> = {
-    bash: "var(--accent-amber)",
-    file: "var(--accent-blue)",
-    search: "var(--accent-green)",
-    mcp: "var(--accent-purple)",
-    "": "var(--accent-teal)",
+  const toolColors: Record<string, string> = {
+    Read: "#3b82f6",     // blue
+    Edit: "#f59e0b",     // amber
+    Write: "#10b981",    // green
+    Bash: "#ef4444",     // red
+    Grep: "#8b5cf6",     // purple
+    Glob: "#06b6d4",     // cyan
+    Task: "#ec4899",     // pink
   };
+  const defaultColor = "#6b7280"; // gray
 
-  function getCategoryColor(cat: string): string {
-    return categoryColors[cat] || "var(--accent-teal)";
+  function getToolColor(name: string): string {
+    return toolColors[name] || defaultColor;
   }
 
   const toolBars = $derived(
     analytics.toolUsage.map(t => ({
       label: t.tool_name,
-      segments: [{ value: t.usage_count, color: getCategoryColor(t.category), label: t.category || t.tool_name }],
+      segments: [{ value: t.usage_count, color: getToolColor(t.tool_name), label: t.tool_name }],
       total: t.usage_count,
     }))
   );
 
-  const categories = $derived(
-    [...new Set(analytics.toolUsage.map(t => t.category))].filter(Boolean).sort()
+  const legendTools = $derived(
+    analytics.toolUsage
+      .slice(0, 10)
+      .map(t => ({ name: t.tool_name, color: getToolColor(t.tool_name) }))
+      .filter((item, i, arr) => arr.findIndex(x => x.name === item.name) === i)
   );
 </script>
 
@@ -35,12 +41,12 @@
     <div class="empty">No tool usage data</div>
   {:else}
     <BarChart data={toolBars} />
-    {#if categories.length > 1}
+    {#if legendTools.length > 1}
       <div class="legend">
-        {#each categories as cat}
+        {#each legendTools as tool}
           <span class="legend-item">
-            <span class="swatch" style="background: {getCategoryColor(cat)}"></span>
-            {cat}
+            <span class="swatch" style="background: {tool.color}"></span>
+            {tool.name}
           </span>
         {/each}
       </div>
