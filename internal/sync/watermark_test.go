@@ -78,6 +78,22 @@ func TestSyncState_SaveAndLoad(t *testing.T) {
 	assert.Equal(t, original.TotalMasked, loaded.TotalMasked)
 }
 
+func TestSyncState_Save_CreatesParentDirectories(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nested", "subdir", "sync-state.json")
+
+	state := &SyncState{
+		Version:  1,
+		Sessions: map[string]SessionWatermark{},
+	}
+
+	require.NoError(t, state.Save(path))
+
+	loaded, err := LoadSyncState(path)
+	require.NoError(t, err)
+	assert.Equal(t, 1, loaded.Version)
+}
+
 func TestSyncState_IsSessionChanged_MatchingHash(t *testing.T) {
 	state := &SyncState{
 		Sessions: map[string]SessionWatermark{

@@ -94,6 +94,16 @@ From the devcontainer, tests connect via `host.docker.internal`. Set `CLICKHOUSE
 
 Each test suite creates a unique temporary database for isolation — no shared state between test runs.
 
+### CGO on ARM64 Devcontainer
+
+The devcontainer's Go toolchain is `linux-amd64` running under Rosetta on ARM64 Macs. CGO builds (needed for the SQLite reader) require the correct GOARCH:
+
+```bash
+GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
+```
+
+Without `GOARCH=arm64`, gcc fails with `-m64` error. Pure Go tests (`CGO_ENABLED=0 go test ./internal/sync/...`) don't need this.
+
 ### Commands
 
 ```bash
@@ -104,7 +114,7 @@ make test-e2e       # go test ./e2e/... (needs ClickHouse)
 make test-all       # All tests
 ```
 
-See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood golden paths, and test infrastructure details.
+See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood sync workflow, and test infrastructure details.
 
 ## Auth Is a Separate Project
 
