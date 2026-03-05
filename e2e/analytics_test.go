@@ -210,16 +210,16 @@ func TestAnalyticsHeatmap_KnownCellExists(t *testing.T) {
 	var cells []store.HeatmapCell
 	require.NoError(t, json.Unmarshal(body, &cells))
 
-	// sess-alpha: Tuesday 10:00 UTC → toDayOfWeek: Tue=2, hour=10
+	// sess-alpha: 2026-02-25 10:00 UTC is a Wednesday → toDayOfWeek: Wed=3, hour=10
 	found := false
 	for _, c := range cells {
-		if c.DayOfWeek == 2 && c.Hour == 10 {
-			assert.GreaterOrEqual(t, c.SessionCount, 1, "Tue 10:00 cell should have >= 1 session")
+		if c.DayOfWeek == 3 && c.Hour == 10 {
+			assert.GreaterOrEqual(t, c.SessionCount, 1, "Wed 10:00 cell should have >= 1 session")
 			found = true
 			break
 		}
 	}
-	assert.True(t, found, "expected heatmap cell for dow=2 hour=10 (sess-alpha on Tuesday 10am)")
+	assert.True(t, found, "expected heatmap cell for dow=3 hour=10 (sess-alpha on Wednesday 10am)")
 }
 
 func TestAnalyticsHeatmap_DateFilter(t *testing.T) {
@@ -263,30 +263,30 @@ func TestAnalyticsHeatmap_SameHourAggregation(t *testing.T) {
 	env := setupTestEnv(t)
 	ctx := context.Background()
 
-	// Write 2 extra sessions at the same dow+hour as sess-alpha (Tue 10:00 UTC)
-	// 2026-02-25 is a Tuesday; pick two more Tuesdays at 10:00
+	// Write 2 extra sessions at the same dow+hour as sess-alpha (Wed 10:00 UTC)
+	// 2026-02-25 is a Wednesday; pick two more Wednesdays at 10:00
 	require.NoError(t, env.store.WriteSession(ctx, "", store.Session{
 		ID: "sess-agg1", UserID: "dave@dev.io", UserName: "Dave",
 		ProjectID: "proj-test", ProjectName: "test", ProjectPath: "/tmp/test",
 		Machine: "vm", AgentType: "claude-code",
-		StartedAt:       ptr(time.Date(2026, 3, 10, 10, 0, 0, 0, time.UTC)), // Tue
+		StartedAt:       ptr(time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC)), // Wed
 		MessageCount:    1,
 		UserMessageCount: 1,
-		SourceCreatedAt: "2026-03-10T10:00:00Z",
+		SourceCreatedAt: "2026-03-11T10:00:00Z",
 	}, []store.Message{
-		{OrgID: "", SessionID: "sess-agg1", Ordinal: 0, Role: "user", Content: "hi", Timestamp: ptr(time.Date(2026, 3, 10, 10, 0, 0, 0, time.UTC)), ContentLength: 2},
+		{OrgID: "", SessionID: "sess-agg1", Ordinal: 0, Role: "user", Content: "hi", Timestamp: ptr(time.Date(2026, 3, 11, 10, 0, 0, 0, time.UTC)), ContentLength: 2},
 	}, nil))
 
 	require.NoError(t, env.store.WriteSession(ctx, "", store.Session{
 		ID: "sess-agg2", UserID: "eve@dev.io", UserName: "Eve",
 		ProjectID: "proj-test", ProjectName: "test", ProjectPath: "/tmp/test",
 		Machine: "vm", AgentType: "claude-code",
-		StartedAt:       ptr(time.Date(2026, 3, 17, 10, 0, 0, 0, time.UTC)), // Tue
+		StartedAt:       ptr(time.Date(2026, 3, 18, 10, 0, 0, 0, time.UTC)), // Wed
 		MessageCount:    1,
 		UserMessageCount: 1,
-		SourceCreatedAt: "2026-03-17T10:00:00Z",
+		SourceCreatedAt: "2026-03-18T10:00:00Z",
 	}, []store.Message{
-		{OrgID: "", SessionID: "sess-agg2", Ordinal: 0, Role: "user", Content: "hi", Timestamp: ptr(time.Date(2026, 3, 17, 10, 0, 0, 0, time.UTC)), ContentLength: 2},
+		{OrgID: "", SessionID: "sess-agg2", Ordinal: 0, Role: "user", Content: "hi", Timestamp: ptr(time.Date(2026, 3, 18, 10, 0, 0, 0, time.UTC)), ContentLength: 2},
 	}, nil))
 
 	_, body := httpGet(t, env, "/api/v1/analytics/heatmap")
@@ -295,13 +295,13 @@ func TestAnalyticsHeatmap_SameHourAggregation(t *testing.T) {
 	require.NoError(t, json.Unmarshal(body, &cells))
 
 	for _, c := range cells {
-		if c.DayOfWeek == 2 && c.Hour == 10 {
+		if c.DayOfWeek == 3 && c.Hour == 10 {
 			assert.GreaterOrEqual(t, c.SessionCount, 3,
-				"Tue 10:00 should aggregate sess-alpha + 2 extra sessions")
+				"Wed 10:00 should aggregate sess-alpha + 2 extra sessions")
 			return
 		}
 	}
-	t.Fatal("expected heatmap cell for dow=2 hour=10")
+	t.Fatal("expected heatmap cell for dow=3 hour=10")
 }
 
 // --- Tool Usage tests ---
