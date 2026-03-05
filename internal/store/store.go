@@ -200,9 +200,9 @@ type ReadStore interface {
 	ListAgents(ctx context.Context, orgID string) ([]string, error)
 	Search(ctx context.Context, orgID string, query SearchQuery) (*SearchPage, error)
 	LookupGitLinks(ctx context.Context, orgID string, sha string, prURL string) ([]GitLinkResult, error)
-	UsageByUser(ctx context.Context, orgID string, dateFrom, dateTo string) ([]UserUsage, error)
-	ActivityHeatmap(ctx context.Context, orgID string, dateFrom, dateTo string) ([]HeatmapCell, error)
-	ToolUsageDistribution(ctx context.Context, orgID string, dateFrom, dateTo string) ([]ToolUsageStat, error)
-	DailyActivity(ctx context.Context, orgID string, dateFrom, dateTo string) ([]DailyActivity, error)
+	UsageByUser(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]UserUsage, error)
+	ActivityHeatmap(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]HeatmapCell, error)
+	ToolUsageDistribution(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]ToolUsageStat, error)
+	DailyActivity(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]DailyActivity, error)
 	Close() error
 }

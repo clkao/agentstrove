@@ -24,8 +24,9 @@ func (s *Server) handleUsageOverview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	projectName := q.Get("project_name")
 
-	result, err := s.store.UsageByUser(r.Context(), "", dateFrom, dateTo)
+	result, err := s.store.UsageByUser(r.Context(), "", projectName, dateFrom, dateTo)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -50,8 +51,9 @@ func (s *Server) handleActivityHeatmap(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	projectName := q.Get("project_name")
 
-	result, err := s.store.ActivityHeatmap(r.Context(), "", dateFrom, dateTo)
+	result, err := s.store.ActivityHeatmap(r.Context(), "", projectName, dateFrom, dateTo)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -76,8 +78,9 @@ func (s *Server) handleToolUsage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	projectName := q.Get("project_name")
 
-	result, err := s.store.ToolUsageDistribution(r.Context(), "", dateFrom, dateTo)
+	result, err := s.store.ToolUsageDistribution(r.Context(), "", projectName, dateFrom, dateTo)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -102,8 +105,9 @@ func (s *Server) handleDailyActivity(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	projectName := q.Get("project_name")
 
-	result, err := s.store.DailyActivity(r.Context(), "", dateFrom, dateTo)
+	result, err := s.store.DailyActivity(r.Context(), "", projectName, dateFrom, dateTo)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

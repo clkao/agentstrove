@@ -101,34 +101,38 @@ export function searchMessages(query: string, filters: Filters = {}): Promise<Se
   return fetchJSON<SearchPage>(`/api/v1/search?${params.toString()}`);
 }
 
-export function fetchUsageOverview(dateFrom?: string, dateTo?: string): Promise<UserUsage[]> {
+export function fetchUsageOverview(dateFrom?: string, dateTo?: string, projectName?: string): Promise<UserUsage[]> {
   const params = new URLSearchParams();
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
+  if (projectName) params.set("project_name", projectName);
   const qs = params.toString();
   return fetchJSON<UserUsage[]>(`/api/v1/analytics/usage${qs ? `?${qs}` : ""}`);
 }
 
-export function fetchActivityHeatmap(dateFrom?: string, dateTo?: string): Promise<HeatmapCell[]> {
+export function fetchActivityHeatmap(dateFrom?: string, dateTo?: string, projectName?: string): Promise<HeatmapCell[]> {
   const params = new URLSearchParams();
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
+  if (projectName) params.set("project_name", projectName);
   const qs = params.toString();
   return fetchJSON<HeatmapCell[]>(`/api/v1/analytics/heatmap${qs ? `?${qs}` : ""}`);
 }
 
-export function fetchToolUsage(dateFrom?: string, dateTo?: string): Promise<ToolUsageStat[]> {
+export function fetchToolUsage(dateFrom?: string, dateTo?: string, projectName?: string): Promise<ToolUsageStat[]> {
   const params = new URLSearchParams();
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
+  if (projectName) params.set("project_name", projectName);
   const qs = params.toString();
   return fetchJSON<ToolUsageStat[]>(`/api/v1/analytics/tools${qs ? `?${qs}` : ""}`);
 }
 
-export function fetchDailyActivity(dateFrom?: string, dateTo?: string): Promise<DailyActivity[]> {
+export function fetchDailyActivity(dateFrom?: string, dateTo?: string, projectName?: string): Promise<DailyActivity[]> {
   const params = new URLSearchParams();
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
+  if (projectName) params.set("project_name", projectName);
   const qs = params.toString();
   return fetchJSON<DailyActivity[]>(`/api/v1/analytics/daily${qs ? `?${qs}` : ""}`);
 }

@@ -5,6 +5,7 @@
   import { ui } from "../../stores/ui.svelte.js";
   import { sessions } from "../../stores/sessions.svelte.js";
   import { search } from "../../stores/search.svelte.js";
+  import { analytics } from "../../stores/analytics.svelte.js";
   import { listProjects } from "../../api/client.js";
   import type { ProjectInfo } from "../../api/types.js";
 
@@ -23,6 +24,8 @@
     if (search.active) {
       search.search(filters);
     }
+    analytics.projectName = selectedProject;
+    analytics.load();
   }
 </script>
 

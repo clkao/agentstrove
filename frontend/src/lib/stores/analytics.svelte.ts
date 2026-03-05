@@ -22,15 +22,17 @@ class AnalyticsStore {
   loading = $state(false);
   dateFrom = $state(defaultDateFrom());
   dateTo = $state(today());
+  projectName = $state("");
 
   async load(): Promise<void> {
     this.loading = true;
     try {
+      const pn = this.projectName || undefined;
       const [usage, heatmap, tools, daily] = await Promise.all([
-        fetchUsageOverview(this.dateFrom, this.dateTo),
-        fetchActivityHeatmap(this.dateFrom, this.dateTo),
-        fetchToolUsage(this.dateFrom, this.dateTo),
-        fetchDailyActivity(this.dateFrom, this.dateTo),
+        fetchUsageOverview(this.dateFrom, this.dateTo, pn),
+        fetchActivityHeatmap(this.dateFrom, this.dateTo, pn),
+        fetchToolUsage(this.dateFrom, this.dateTo, pn),
+        fetchDailyActivity(this.dateFrom, this.dateTo, pn),
       ]);
       this.usage = usage;
       this.heatmap = heatmap;

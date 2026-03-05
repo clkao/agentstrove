@@ -21,7 +21,7 @@ type userUsageRow struct {
 }
 
 // UsageByUser returns per-user/agent/project session, message, and commit counts.
-func (s *ClickHouseStore) UsageByUser(ctx context.Context, orgID string, dateFrom, dateTo string) ([]UserUsage, error) {
+func (s *ClickHouseStore) UsageByUser(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]UserUsage, error) {
 	var conditions []string
 	var args []interface{}
 
@@ -29,6 +29,11 @@ func (s *ClickHouseStore) UsageByUser(ctx context.Context, orgID string, dateFro
 	args = append(args, orgID)
 	conditions = append(conditions, "s.parent_session_id = ''")
 	conditions = append(conditions, "s.user_message_count > 0")
+
+	if projectName != "" {
+		conditions = append(conditions, "s.project_name = ?")
+		args = append(args, projectName)
+	}
 
 	if dateFrom != "" {
 		conditions = append(conditions, "s.started_at >= ?")
@@ -81,7 +86,7 @@ type heatmapRow struct {
 }
 
 // ActivityHeatmap returns session counts grouped by day-of-week and hour.
-func (s *ClickHouseStore) ActivityHeatmap(ctx context.Context, orgID string, dateFrom, dateTo string) ([]HeatmapCell, error) {
+func (s *ClickHouseStore) ActivityHeatmap(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]HeatmapCell, error) {
 	var conditions []string
 	var args []interface{}
 
@@ -89,6 +94,11 @@ func (s *ClickHouseStore) ActivityHeatmap(ctx context.Context, orgID string, dat
 	args = append(args, orgID)
 	conditions = append(conditions, "s.parent_session_id = ''")
 	conditions = append(conditions, "s.user_message_count > 0")
+
+	if projectName != "" {
+		conditions = append(conditions, "s.project_name = ?")
+		args = append(args, projectName)
+	}
 
 	if dateFrom != "" {
 		conditions = append(conditions, "s.started_at >= ?")
@@ -131,7 +141,7 @@ type toolUsageRow struct {
 }
 
 // ToolUsageDistribution returns the top 20 tool name/category pairs by usage count.
-func (s *ClickHouseStore) ToolUsageDistribution(ctx context.Context, orgID string, dateFrom, dateTo string) ([]ToolUsageStat, error) {
+func (s *ClickHouseStore) ToolUsageDistribution(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]ToolUsageStat, error) {
 	var conditions []string
 	var args []interface{}
 
@@ -139,6 +149,11 @@ func (s *ClickHouseStore) ToolUsageDistribution(ctx context.Context, orgID strin
 	args = append(args, orgID)
 	conditions = append(conditions, "s.parent_session_id = ''")
 	conditions = append(conditions, "s.user_message_count > 0")
+
+	if projectName != "" {
+		conditions = append(conditions, "s.project_name = ?")
+		args = append(args, projectName)
+	}
 
 	if dateFrom != "" {
 		conditions = append(conditions, "s.started_at >= ?")
@@ -181,7 +196,7 @@ type dailyActivityRow struct {
 }
 
 // DailyActivity returns per-day session and message counts.
-func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, dateFrom, dateTo string) ([]DailyActivity, error) {
+func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]DailyActivity, error) {
 	var conditions []string
 	var args []interface{}
 
@@ -189,6 +204,11 @@ func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, dateF
 	args = append(args, orgID)
 	conditions = append(conditions, "s.parent_session_id = ''")
 	conditions = append(conditions, "s.user_message_count > 0")
+
+	if projectName != "" {
+		conditions = append(conditions, "s.project_name = ?")
+		args = append(args, projectName)
+	}
 
 	if dateFrom != "" {
 		conditions = append(conditions, "s.started_at >= ?")

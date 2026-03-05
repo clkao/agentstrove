@@ -989,7 +989,7 @@ func TestUsageByUser(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	results, err := s.UsageByUser(ctx, orgID, "", "")
+	results, err := s.UsageByUser(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, results)
 
@@ -1029,7 +1029,7 @@ func TestUsageByUserDateFilter(t *testing.T) {
 	orgID := ""
 
 	// Filter to Jan 5 only — should get Alice's 2 claude-code/frontend sessions only
-	results, err := s.UsageByUser(ctx, orgID, "2024-01-05", "2024-01-05")
+	results, err := s.UsageByUser(ctx, orgID, "", "2024-01-05", "2024-01-05")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "alice@test.com", results[0].UserID)
@@ -1038,13 +1038,13 @@ func TestUsageByUserDateFilter(t *testing.T) {
 	assert.Equal(t, 2, results[0].SessionCount)
 
 	// Filter to Jan 3 only — should get Bob's session
-	results, err = s.UsageByUser(ctx, orgID, "2024-01-03", "2024-01-03")
+	results, err = s.UsageByUser(ctx, orgID, "", "2024-01-03", "2024-01-03")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "bob@test.com", results[0].UserID)
 
 	// Filter from Jan 4 to Jan 5 — Alice's 3 sessions (2 groups)
-	results, err = s.UsageByUser(ctx, orgID, "2024-01-04", "2024-01-05")
+	results, err = s.UsageByUser(ctx, orgID, "", "2024-01-04", "2024-01-05")
 	require.NoError(t, err)
 	assert.Len(t, results, 2)
 }
@@ -1054,7 +1054,7 @@ func TestUsageByUserEmpty(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	results, err := s.UsageByUser(ctx, orgID, "", "")
+	results, err := s.UsageByUser(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	assert.NotNil(t, results, "should return empty slice, not nil")
 	assert.Len(t, results, 0)
@@ -1066,7 +1066,7 @@ func TestUsageByUserExcludesSubagentAndGhost(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	results, err := s.UsageByUser(ctx, orgID, "", "")
+	results, err := s.UsageByUser(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 
 	// Total sessions counted should be 4 (not 6 which includes ghost + subagent)
@@ -1083,7 +1083,7 @@ func TestActivityHeatmap(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	cells, err := s.ActivityHeatmap(ctx, orgID, "", "")
+	cells, err := s.ActivityHeatmap(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, cells)
 
@@ -1110,7 +1110,7 @@ func TestActivityHeatmapEmpty(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	cells, err := s.ActivityHeatmap(ctx, orgID, "", "")
+	cells, err := s.ActivityHeatmap(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	assert.NotNil(t, cells, "should return empty slice, not nil")
 	assert.Len(t, cells, 0)
@@ -1122,7 +1122,7 @@ func TestToolUsageDistribution(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "")
+	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, stats)
 
@@ -1153,7 +1153,7 @@ func TestToolUsageDistributionEmpty(t *testing.T) {
 	ctx := context.Background()
 	orgID := ""
 
-	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "")
+	stats, err := s.ToolUsageDistribution(ctx, orgID, "", "", "")
 	require.NoError(t, err)
 	assert.NotNil(t, stats, "should return empty slice, not nil")
 	assert.Len(t, stats, 0)
