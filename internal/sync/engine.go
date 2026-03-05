@@ -72,7 +72,7 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 		e.state.ResetForResync(SyncVersion)
 	}
 
-	sessions, err := e.reader.ReadSessionsSince("")
+	sessions, err := e.reader.ReadSessionsSince(e.state.LastSessionCreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("read sessions: %w", err)
 	}
