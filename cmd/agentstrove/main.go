@@ -20,6 +20,12 @@ import (
 	astSync "github.com/clkao/agentstrove/internal/sync"
 )
 
+var (
+	version   = "0.1.0-dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
 	os.Exit(run())
 }
@@ -61,6 +67,9 @@ func run() int {
 	}
 
 	switch subcmd {
+	case "version":
+		fmt.Printf("agentstrove %s (commit=%s, built=%s)\n", version, commit, buildDate)
+		return 0
 	case "sync":
 		return runSync(configPath, force, resetDB)
 	case "daemon":
@@ -75,11 +84,13 @@ func run() int {
 }
 
 func printUsage() {
+	fmt.Fprintf(os.Stderr, "agentstrove %s\n\n", version)
 	fmt.Fprintf(os.Stderr, "Usage: agentstrove <command> [flags]\n\n")
 	fmt.Fprintf(os.Stderr, "Commands:\n")
-	fmt.Fprintf(os.Stderr, "  sync    Sync local agentsview data to ClickHouse (one-shot)\n")
-	fmt.Fprintf(os.Stderr, "  daemon  Watch agentsview for changes and sync continuously\n")
-	fmt.Fprintf(os.Stderr, "  serve   Start the HTTP API server for the conversation browser\n")
+	fmt.Fprintf(os.Stderr, "  sync      Sync local agentsview data to ClickHouse (one-shot)\n")
+	fmt.Fprintf(os.Stderr, "  daemon    Watch agentsview for changes and sync continuously\n")
+	fmt.Fprintf(os.Stderr, "  serve     Start the HTTP API server for the conversation browser\n")
+	fmt.Fprintf(os.Stderr, "  version   Show version information\n")
 	fmt.Fprintf(os.Stderr, "\nFlags:\n")
 	fmt.Fprintf(os.Stderr, "  --config path   Config file (default: %s)\n", defaultConfigPath())
 	fmt.Fprintf(os.Stderr, "  --port N        Server port (default: 8080, serve only)\n")

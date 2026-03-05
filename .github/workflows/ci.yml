@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Stub frontend embed dir
+        run: mkdir -p internal/web/dist && echo ok > internal/web/dist/stub.html
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.10.1
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Stub frontend embed dir
+        run: mkdir -p internal/web/dist && echo ok > internal/web/dist/stub.html
+
+      - name: Run unit tests
+        run: go test ./internal/reader/... ./internal/secrets/... ./internal/gitlinks/... ./internal/sync/... -v -count=1
+        env:
+          CGO_ENABLED: "1"
+
+      - name: Run unit tests (race detector)
+        run: go test -race ./internal/reader/... ./internal/secrets/... ./internal/gitlinks/... ./internal/sync/... -count=1
+        env:
+          CGO_ENABLED: "1"
+
+  test-store:
+    runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        ports:
+          - 9000:9000
+          - 8123:8123
+        options: >-
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Stub frontend embed dir
+        run: mkdir -p internal/web/dist && echo ok > internal/web/dist/stub.html
+
+      - name: Run store tests
+        run: go test ./internal/store/... -v -count=1 -timeout 60s
+        env:
+          CGO_ENABLED: "1"
+          CLICKHOUSE_ADDR: localhost:9000
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+
+      - name: Run API tests
+        run: go test ./internal/api/... -v -count=1 -timeout 60s
+        env:
+          CGO_ENABLED: "1"
+          CLICKHOUSE_ADDR: localhost:9000
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+
+      - name: Run E2E tests
+        run: go test ./e2e/... -v -count=1 -timeout 120s
+        env:
+          CGO_ENABLED: "1"
+          CLICKHOUSE_ADDR: localhost:9000
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
