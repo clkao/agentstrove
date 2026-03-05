@@ -4,34 +4,29 @@
   import { onMount } from "svelte";
   import { sessions } from "../../stores/sessions.svelte.js";
   import { search } from "../../stores/search.svelte.js";
-  import { listUsers, listProjects, listAgents } from "../../api/client.js";
-  import type { UserInfo, ProjectInfo } from "../../api/types.js";
+  import { listUsers, listAgents } from "../../api/client.js";
+  import type { UserInfo } from "../../api/types.js";
 
   let users = $state<UserInfo[]>([]);
-  let projects = $state<ProjectInfo[]>([]);
   let agents = $state<string[]>([]);
 
   let selectedUser = $state("");
-  let selectedProject = $state("");
   let selectedAgent = $state("");
   let dateFrom = $state("");
   let dateTo = $state("");
 
   onMount(async () => {
-    const [usrs, projs, agts] = await Promise.all([
+    const [usrs, agts] = await Promise.all([
       listUsers(),
-      listProjects(),
       listAgents(),
     ]);
     users = usrs;
-    projects = projs;
     agents = agts;
   });
 
   function applyFilters(): void {
     const filters = {
       user_id: selectedUser || undefined,
-      project_id: selectedProject || undefined,
       agent_type: selectedAgent || undefined,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
@@ -53,18 +48,6 @@
     <option value="">All users</option>
     {#each users as user}
       <option value={user.id}>{user.name}</option>
-    {/each}
-  </select>
-
-  <select
-    class="filter-select"
-    bind:value={selectedProject}
-    onchange={applyFilters}
-    aria-label="Filter by project"
-  >
-    <option value="">All projects</option>
-    {#each projects as proj}
-      <option value={proj.id}>{proj.name}</option>
     {/each}
   </select>
 

@@ -52,8 +52,7 @@
 }
 
 /* Dark theme */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root.dark {
     --bg-primary: #0d0d12;
     --bg-surface: #16161e;
     --bg-surface-hover: #1f1f2a;
@@ -83,7 +82,6 @@
     --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
     --overlay-bg: rgba(0, 0, 0, 0.6);
     color-scheme: dark;
-  }
 }
 
 html,
