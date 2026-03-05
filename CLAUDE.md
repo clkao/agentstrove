@@ -104,30 +104,6 @@ GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
 
 Without `GOARCH=arm64`, gcc fails with `-m64` error. Pure Go tests (`CGO_ENABLED=0 go test ./internal/sync/...`) don't need this.
 
-### Dogfood Sync Workflow
-
-To sync real agentsview data into ClickHouse from the devcontainer:
-
-```bash
-# 1. Run agentsview to populate ~/.agentsview/sessions.db
-/Users/clkao/git/agentsview/agentsview -no-browser -port 18923  # ctrl-c after sync completes
-
-# 2. Create config if needed
-mkdir -p ~/.config/agentstrove/data
-cat > ~/.config/agentstrove/config.json << 'EOF'
-{
-  "clickhouse_addr": "host.docker.internal:9440",
-  "clickhouse_user": "agentstrove",
-  "clickhouse_password": "agentstrove",
-  "agentsview_db_path": "/home/vscode/.agentsview/sessions.db"
-}
-EOF
-
-# 3. Build and sync
-GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
-/tmp/agentstrove sync
-```
-
 ### Commands
 
 ```bash
@@ -138,7 +114,7 @@ make test-e2e       # go test ./e2e/... (needs ClickHouse)
 make test-all       # All tests
 ```
 
-See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood golden paths, and test infrastructure details.
+See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood sync workflow, and test infrastructure details.
 
 ## Auth Is a Separate Project
 

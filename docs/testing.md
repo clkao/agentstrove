@@ -188,6 +188,34 @@ Runs against real agentsview database. Validates the full pipeline: reader → s
 - ClickHouse running
 - Tests skip if agentsview DB not found
 
+### Syncing Agentsview Data (Devcontainer)
+
+To populate the agentsview SQLite DB and sync it to ClickHouse:
+
+```bash
+# 1. Run agentsview to sync sessions into ~/.agentsview/sessions.db
+agentsview -no-browser -port 18923  # ctrl-c after initial sync completes
+
+# 2. Create agentstrove config (one-time setup)
+mkdir -p ~/.config/agentstrove/data
+cat > ~/.config/agentstrove/config.json << 'EOF'
+{
+  "clickhouse_addr": "host.docker.internal:9440",
+  "clickhouse_user": "agentstrove",
+  "clickhouse_password": "agentstrove",
+  "agentsview_db_path": "/home/vscode/.agentsview/sessions.db"
+}
+EOF
+
+# 3. Build with CGO (arm64 devcontainer needs GOARCH override, see CLAUDE.md)
+GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
+
+# 4. Sync to ClickHouse
+/tmp/agentstrove sync
+```
+
+Re-run steps 1 and 4 to pick up new sessions after more Claude Code usage.
+
 ### Golden Paths
 
 | # | Golden Path | How to Validate |
