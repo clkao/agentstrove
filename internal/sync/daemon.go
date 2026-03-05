@@ -48,18 +48,18 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 	if addr == "" {
 		addr = "localhost:9000"
 	}
-
 	db := cfg.ClickHouseDatabase
 	if db == "" {
 		db = "agentstrove"
 	}
 
-	var s *store.ClickHouseStore
-	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
-		s, err = store.NewClickHouseStoreWithAuth(addr, db, cfg.ClickHouseUser, cfg.ClickHousePassword)
-	} else {
-		s, err = store.NewClickHouseStore(addr, db)
-	}
+	s, err := store.NewClickHouseStoreFromOptions(store.ConnectOptions{
+		Addr:     addr,
+		Database: db,
+		User:     cfg.ClickHouseUser,
+		Password: cfg.ClickHousePassword,
+		Secure:   cfg.ClickHouseSecure,
+	})
 	if err != nil {
 		r.Close()
 		return nil, fmt.Errorf("create store: %w", err)

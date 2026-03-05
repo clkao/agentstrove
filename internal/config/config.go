@@ -14,6 +14,7 @@ import (
 type Config struct {
 	ClickHouseAddr     string `json:"clickhouse_addr"`
 	ClickHouseDatabase string `json:"clickhouse_database"`
+	ClickHouseSecure   bool   `json:"clickhouse_secure"`
 	ClickHouseUser     string `json:"clickhouse_user"`
 	ClickHousePassword string `json:"clickhouse_password"`
 	UserName           string `json:"user_name"`

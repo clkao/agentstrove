@@ -124,12 +124,13 @@ func clickhouseDatabase(cfg *config.Config) string {
 }
 
 func openStore(cfg *config.Config) (*store.ClickHouseStore, error) {
-	addr := clickhouseAddr(cfg)
-	db := clickhouseDatabase(cfg)
-	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
-		return store.NewClickHouseStoreWithAuth(addr, db, cfg.ClickHouseUser, cfg.ClickHousePassword)
-	}
-	return store.NewClickHouseStore(addr, db)
+	return store.NewClickHouseStoreFromOptions(store.ConnectOptions{
+		Addr:     clickhouseAddr(cfg),
+		Database: clickhouseDatabase(cfg),
+		User:     cfg.ClickHouseUser,
+		Password: cfg.ClickHousePassword,
+		Secure:   cfg.ClickHouseSecure,
+	})
 }
 
 func validateSyncConfig(cfg *config.Config, configPath string) bool {

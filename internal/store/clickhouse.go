@@ -5,6 +5,7 @@ package store
 
 import (
 	"context"
+	"crypto/tls"
 	_ "embed"
 	"encoding/base64"
 	"fmt"
@@ -23,52 +24,64 @@ type ClickHouseStore struct {
 	database string
 }
 
-// NewClickHouseStore opens a native-protocol connection to ClickHouse.
-// Optional credentials are taken from the ClickHouseOptions struct.
+// ConnectOptions holds parameters for connecting to ClickHouse.
+type ConnectOptions struct {
+	Addr     string
+	Database string
+	User     string
+	Password string
+	Secure   bool
+}
+
+// NewClickHouseStore opens a native-protocol connection to ClickHouse with default credentials.
 func NewClickHouseStore(addr, database string) (*ClickHouseStore, error) {
-	return NewClickHouseStoreWithAuth(addr, database, "", "")
+	return NewClickHouseStoreFromOptions(ConnectOptions{Addr: addr, Database: database})
 }
 
 // NewClickHouseStoreWithAuth opens a native-protocol connection to ClickHouse with explicit credentials.
+func NewClickHouseStoreWithAuth(addr, database, user, password string) (*ClickHouseStore, error) {
+	return NewClickHouseStoreFromOptions(ConnectOptions{
+		Addr: addr, Database: database, User: user, Password: password,
+	})
+}
+
+// NewClickHouseStoreFromOptions opens a native-protocol connection using the given options.
 // Bootstraps by connecting to "default" first to CREATE DATABASE IF NOT EXISTS,
 // since hosted ClickHouse validates the database during connection handshake.
-func NewClickHouseStoreWithAuth(addr, database, user, password string) (*ClickHouseStore, error) {
+func NewClickHouseStoreFromOptions(opts ConnectOptions) (*ClickHouseStore, error) {
+	user := opts.User
 	if user == "" {
 		user = "default"
 	}
 
+	mkOpts := func(db string) *clickhouse.Options {
+		o := &clickhouse.Options{
+			Addr:     []string{opts.Addr},
+			Auth:     clickhouse.Auth{Database: db, Username: user, Password: opts.Password},
+			Protocol: clickhouse.Native,
+		}
+		if opts.Secure {
+			o.TLS = &tls.Config{}
+		}
+		return o
+	}
+
 	// Bootstrap: connect to "default" to ensure working database exists.
-	bootstrapConn, err := clickhouse.Open(&clickhouse.Options{
-		Addr: []string{addr},
-		Auth: clickhouse.Auth{
-			Database: "default",
-			Username: user,
-			Password: password,
-		},
-		Protocol: clickhouse.Native,
-	})
+	bootstrapConn, err := clickhouse.Open(mkOpts("default"))
 	if err != nil {
 		return nil, fmt.Errorf("open clickhouse (bootstrap): %w", err)
 	}
-	if err := bootstrapConn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS "+database); err != nil {
+	if err := bootstrapConn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS "+opts.Database); err != nil {
 		bootstrapConn.Close()
-		return nil, fmt.Errorf("create database %s: %w", database, err)
+		return nil, fmt.Errorf("create database %s: %w", opts.Database, err)
 	}
 	bootstrapConn.Close()
 
-	conn, err := clickhouse.Open(&clickhouse.Options{
-		Addr: []string{addr},
-		Auth: clickhouse.Auth{
-			Database: database,
-			Username: user,
-			Password: password,
-		},
-		Protocol: clickhouse.Native,
-	})
+	conn, err := clickhouse.Open(mkOpts(opts.Database))
 	if err != nil {
 		return nil, fmt.Errorf("open clickhouse: %w", err)
 	}
-	return &ClickHouseStore{conn: conn, database: database}, nil
+	return &ClickHouseStore{conn: conn, database: opts.Database}, nil
 }
 
 
