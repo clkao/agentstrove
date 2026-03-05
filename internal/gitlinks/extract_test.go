@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeToolCall(sessionID string, ordinal int, category, inputJSON, resultContent string) store.ToolCall {
+func makeToolCall(sessionID string, ordinal int, toolName, category, inputJSON, resultContent string) store.ToolCall {
 	return store.ToolCall{
 		SessionID:      sessionID,
 		MessageOrdinal: ordinal,
-		ToolName:       "Bash",
+		ToolName:       toolName,
 		Category:       category,
 		InputJSON:      inputJSON,
 		ResultContent:  resultContent,
@@ -33,7 +33,7 @@ func makeMessage(sessionID string, ordinal int, role, content string) store.Mess
 
 func TestExtractGitLinks_CommitSHA(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"fix: something\""}`,
 			"[main abc1234] fix: something\n 1 file changed, 2 insertions(+)\n"),
 	}
@@ -53,7 +53,7 @@ func TestExtractGitLinks_CommitSHA(t *testing.T) {
 
 func TestExtractGitLinks_RootCommit(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"initial\""}`,
 			"[main (root-commit) abc1234] initial\n 1 file changed\n"),
 	}
@@ -66,7 +66,7 @@ func TestExtractGitLinks_RootCommit(t *testing.T) {
 
 func TestExtractGitLinks_DetachedHEAD(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"detached\""}`,
 			"[detached HEAD abc1234] detached\n"),
 	}
@@ -79,7 +79,7 @@ func TestExtractGitLinks_DetachedHEAD(t *testing.T) {
 
 func TestExtractGitLinks_GHPRCreate(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 2, "Bash",
+		makeToolCall("sess-1", 2, "Bash", "shell",
 			`{"command":"gh pr create --title \"feat: new\" --body \"description\""}`,
 			"Creating pull request for feat/new into main...\nhttps://github.com/owner/repo/pull/42\n"),
 	}
@@ -94,7 +94,7 @@ func TestExtractGitLinks_GHPRCreate(t *testing.T) {
 
 func TestExtractGitLinks_PRURLInNonGHPRCreate_MediumConfidence(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 3, "Bash",
+		makeToolCall("sess-1", 3, "Bash", "shell",
 			`{"command":"git push origin feat/new"}`,
 			"remote: Create a pull request for 'feat/new' on GitHub by visiting:\nremote:   https://github.com/owner/repo/pull/43\n"),
 	}
@@ -109,7 +109,7 @@ func TestExtractGitLinks_PRURLInNonGHPRCreate_MediumConfidence(t *testing.T) {
 
 func TestExtractGitLinks_ChainedCommands(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git add . && git commit -m \"chained\""}`,
 			"[feat/branch def5678] chained\n 2 files changed\n"),
 	}
@@ -123,7 +123,7 @@ func TestExtractGitLinks_ChainedCommands(t *testing.T) {
 
 func TestExtractGitLinks_NonBashToolCall(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Read",
+		makeToolCall("sess-1", 1, "Read", "file",
 			`{"path":"/tmp/file.go"}`,
 			"[main abc1234] some content that looks like commit output\n"),
 	}
@@ -135,10 +135,10 @@ func TestExtractGitLinks_NonBashToolCall(t *testing.T) {
 
 func TestExtractGitLinks_MultipleToolCallsAcrossOrdinals(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"first\""}`,
 			"[main aaa1111] first\n 1 file changed\n"),
-		makeToolCall("sess-1", 3, "Bash",
+		makeToolCall("sess-1", 3, "Bash", "shell",
 			`{"command":"git commit -m \"second\""}`,
 			"[main bbb2222] second\n 1 file changed\n"),
 	}
@@ -163,10 +163,10 @@ func TestExtractGitLinks_NoMatchingToolCalls(t *testing.T) {
 
 func TestExtractGitLinks_DeduplicatesSameSHA(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"first\""}`,
 			"[main abc1234] first\n"),
-		makeToolCall("sess-1", 3, "Bash",
+		makeToolCall("sess-1", 3, "Bash", "shell",
 			`{"command":"git commit --amend --no-edit"}`,
 			"[main abc1234] first\n"),
 	}
@@ -179,7 +179,7 @@ func TestExtractGitLinks_DeduplicatesSameSHA(t *testing.T) {
 
 func TestExtractGitLinks_BashToolCallWithNoGitCommand(t *testing.T) {
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"ls -la"}`,
 			"total 48\ndrwxr-xr-x 5 user user 4096 Mar 1 10:00 .\n"),
 	}
@@ -193,7 +193,7 @@ func TestExtractGitLinks_EmptyResultContent(t *testing.T) {
 	// When result_content is empty (old agentsview without result storage),
 	// extraction finds nothing — this is expected behavior.
 	tcs := []store.ToolCall{
-		makeToolCall("sess-1", 1, "Bash",
+		makeToolCall("sess-1", 1, "Bash", "shell",
 			`{"command":"git commit -m \"fix\""}`,
 			""),
 	}

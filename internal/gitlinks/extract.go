@@ -13,7 +13,7 @@ func ExtractGitLinks(toolCalls []store.ToolCall, messages []store.Message) []sto
 	seen := make(map[string]bool)
 
 	for _, tc := range toolCalls {
-		if tc.Category != "Bash" || tc.ResultContent == "" {
+		if tc.ToolName != "Bash" || tc.ResultContent == "" {
 			continue
 		}
 
