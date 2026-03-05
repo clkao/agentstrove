@@ -85,6 +85,7 @@ type GitLinkResult struct {
 type SessionFilter struct {
 	UserID           string
 	ProjectID        string
+	ProjectName      string
 	AgentType        string
 	DateFrom         string
 	DateTo           string
@@ -111,10 +112,11 @@ type ProjectInfo struct {
 }
 
 type SearchQuery struct {
-	Query     string
-	UserID    string
-	ProjectID string
-	AgentType string
+	Query       string
+	UserID      string
+	ProjectID   string
+	ProjectName string
+	AgentType   string
 	DateFrom  string
 	DateTo    string
 	Limit     int

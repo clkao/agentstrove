@@ -38,12 +38,13 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	searchQuery := store.SearchQuery{
-		Query:     query,
-		UserID:    q.Get("user_id"),
-		ProjectID: q.Get("project_id"),
-		AgentType: q.Get("agent_type"),
-		DateFrom:  q.Get("date_from"),
-		DateTo:    q.Get("date_to"),
+		Query:       query,
+		UserID:      q.Get("user_id"),
+		ProjectID:   q.Get("project_id"),
+		ProjectName: q.Get("project_name"),
+		AgentType:   q.Get("agent_type"),
+		DateFrom:    q.Get("date_from"),
+		DateTo:      q.Get("date_to"),
 	}
 
 	limit := 50

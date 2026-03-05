@@ -55,9 +55,10 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := store.SessionFilter{
-		UserID:    q.Get("user_id"),
-		ProjectID: q.Get("project_id"),
-		AgentType: q.Get("agent_type"),
+		UserID:      q.Get("user_id"),
+		ProjectID:   q.Get("project_id"),
+		ProjectName: q.Get("project_name"),
+		AgentType:   q.Get("agent_type"),
 		DateFrom:  dateFrom,
 		DateTo:    dateTo,
 		Cursor:    q.Get("cursor"),

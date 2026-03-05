@@ -17,7 +17,7 @@
 
   function onProjectChange(): void {
     const filters = {
-      project_id: selectedProject || undefined,
+      project_name: selectedProject || undefined,
     };
     sessions.updateFilters(filters);
     if (search.active) {
@@ -38,7 +38,7 @@
     >
       <option value="">All projects</option>
       {#each projects as proj}
-        <option value={proj.id}>{proj.name}</option>
+        <option value={proj.name}>{proj.name}</option>
       {/each}
     </select>
   </div>

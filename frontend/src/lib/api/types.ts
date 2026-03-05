@@ -65,6 +65,7 @@ export interface ProjectInfo {
 export interface Filters {
   user_id?: string;
   project_id?: string;
+  project_name?: string;
   agent_type?: string;
   date_from?: string;
   date_to?: string;

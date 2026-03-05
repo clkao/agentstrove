@@ -41,6 +41,7 @@ function buildQuery(filters: Filters): string {
   const params = new URLSearchParams();
   if (filters.user_id) params.set("user_id", filters.user_id);
   if (filters.project_id) params.set("project_id", filters.project_id);
+  if (filters.project_name) params.set("project_name", filters.project_name);
   if (filters.agent_type) params.set("agent_type", filters.agent_type);
   if (filters.date_from) params.set("date_from", filters.date_from);
   if (filters.date_to) params.set("date_to", filters.date_to);
@@ -88,6 +89,7 @@ export function searchMessages(query: string, filters: Filters = {}): Promise<Se
   params.set("q", query);
   if (filters.user_id) params.set("user_id", filters.user_id);
   if (filters.project_id) params.set("project_id", filters.project_id);
+  if (filters.project_name) params.set("project_name", filters.project_name);
   if (filters.agent_type) params.set("agent_type", filters.agent_type);
   if (filters.date_from) params.set("date_from", filters.date_from);
   if (filters.date_to) params.set("date_to", filters.date_to);

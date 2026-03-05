@@ -315,6 +315,10 @@ func (s *ClickHouseStore) ListSessions(ctx context.Context, orgID string, filter
 		baseWhere = append(baseWhere, "s.project_id = ?")
 		baseArgs = append(baseArgs, filter.ProjectID)
 	}
+	if filter.ProjectName != "" {
+		baseWhere = append(baseWhere, "s.project_name = ?")
+		baseArgs = append(baseArgs, filter.ProjectName)
+	}
 	if filter.AgentType != "" {
 		baseWhere = append(baseWhere, "s.agent_type = ?")
 		baseArgs = append(baseArgs, filter.AgentType)
@@ -708,6 +712,10 @@ func (s *ClickHouseStore) Search(ctx context.Context, orgID string, query Search
 	if query.ProjectID != "" {
 		sessionFilters = append(sessionFilters, "s.project_id = ?")
 		sessionArgs = append(sessionArgs, query.ProjectID)
+	}
+	if query.ProjectName != "" {
+		sessionFilters = append(sessionFilters, "s.project_name = ?")
+		sessionArgs = append(sessionArgs, query.ProjectName)
 	}
 	if query.AgentType != "" {
 		sessionFilters = append(sessionFilters, "s.agent_type = ?")
