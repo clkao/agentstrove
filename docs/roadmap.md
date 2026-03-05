@@ -218,7 +218,9 @@ All phases target the Phase 1 OSS launch. Each phase is built and tested before 
   8. `store.WriteSession()` — session row with current `_version`, only new messages and tool calls
   9. `gitlinks.ExtractGitLinks()` from new tool calls + `store.WriteGitLinks()`
   10. Update watermark: `{fileHash, lastOrdinal = max(ordinal)}`
-- `SyncState` watermark: `map[sessionID]{FileHash, LastOrdinal}`, persisted as JSON
+- `SyncState` watermark: `{Version, Sessions: map[sessionID]{FileHash, LastOrdinal}}`, persisted as JSON
+- **Sync version**: hardcoded `const SyncVersion = 1` in the binary. On `RunOnce`, if `watermark.Version < SyncVersion`, reset all session entries and do a full resync. Bump `SyncVersion` when the reader or transformation logic changes (e.g., new agentsview fields, new secret patterns). Re-syncing is safe — ReplacingMergeTree deduplicates via `_version`.
+- `sync --force` CLI flag: resets the watermark regardless of version, forces full resync
 - Identity mapping: reader's raw fields → v1 user_id/user_name/project_id/project_name/project_path via config
 
 **Port from v0:** `internal/sync/engine.go` + `internal/sync/watermark.go` — adapt for incremental append (v0 does delete-then-insert and full message re-write). Remove search rebuild post-hook.
