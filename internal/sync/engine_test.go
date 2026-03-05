@@ -29,6 +29,13 @@ func (f *fakeStore) WriteSession(_ context.Context, _ string, sess store.Session
 	return nil
 }
 
+func (f *fakeStore) WriteBatch(_ context.Context, _ string, sessions []store.Session, msgs []store.Message, tcs []store.ToolCall) error {
+	f.sessions = append(f.sessions, sessions...)
+	f.messages = append(f.messages, msgs...)
+	f.toolCalls = append(f.toolCalls, tcs...)
+	return nil
+}
+
 func (f *fakeStore) WriteGitLinks(_ context.Context, _ string, links []store.GitLink) error {
 	f.gitLinks = append(f.gitLinks, links...)
 	return nil
