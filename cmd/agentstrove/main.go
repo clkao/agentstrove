@@ -108,7 +108,15 @@ func clickhouseAddr(cfg *config.Config) string {
 	if cfg.ClickHouseAddr != "" {
 		return cfg.ClickHouseAddr
 	}
-	return "host.docker.internal:9440"
+	return "localhost:9000"
+}
+
+func openStore(cfg *config.Config) (*store.ClickHouseStore, error) {
+	addr := clickhouseAddr(cfg)
+	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
+		return store.NewClickHouseStoreWithAuth(addr, "agentstrove", cfg.ClickHouseUser, cfg.ClickHousePassword)
+	}
+	return store.NewClickHouseStore(addr, "agentstrove")
 }
 
 func validateSyncConfig(cfg *config.Config, configPath string) bool {
@@ -148,7 +156,7 @@ func runSync(configPath string, force bool) int {
 	}
 	defer r.Close()
 
-	s, err := store.NewClickHouseStore(clickhouseAddr(cfg), "agentstrove")
+	s, err := openStore(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating store: %v\n", err)
 		return 1
@@ -249,7 +257,7 @@ func runServe(configPath string, portOverride int) int {
 	log.Printf("agentstrove serve starting")
 	log.Printf("  clickhouse: %s", clickhouseAddr(cfg))
 
-	s, err := store.NewClickHouseStore(clickhouseAddr(cfg), "agentstrove")
+	s, err := openStore(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating store: %v\n", err)
 		return 1

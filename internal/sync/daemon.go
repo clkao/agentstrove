@@ -46,10 +46,15 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 
 	addr := cfg.ClickHouseAddr
 	if addr == "" {
-		addr = "host.docker.internal:9440"
+		addr = "localhost:9000"
 	}
 
-	s, err := store.NewClickHouseStore(addr, "agentstrove")
+	var s *store.ClickHouseStore
+	if cfg.ClickHouseUser != "" || cfg.ClickHousePassword != "" {
+		s, err = store.NewClickHouseStoreWithAuth(addr, "agentstrove", cfg.ClickHouseUser, cfg.ClickHousePassword)
+	} else {
+		s, err = store.NewClickHouseStore(addr, "agentstrove")
+	}
 	if err != nil {
 		r.Close()
 		return nil, fmt.Errorf("create store: %w", err)

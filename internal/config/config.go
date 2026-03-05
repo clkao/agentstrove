@@ -12,12 +12,14 @@ import (
 
 // Config holds all daemon configuration fields.
 type Config struct {
-	ClickHouseAddr   string `json:"clickhouse_addr"`
-	UserName         string `json:"user_name"`
-	UserID           string `json:"user_id"`
-	AgentsviewDBPath string `json:"agentsview_db_path"`
-	DataDir          string `json:"data_dir"`
-	ServerPort       int    `json:"server_port"`
+	ClickHouseAddr     string `json:"clickhouse_addr"`
+	ClickHouseUser     string `json:"clickhouse_user"`
+	ClickHousePassword string `json:"clickhouse_password"`
+	UserName           string `json:"user_name"`
+	UserID             string `json:"user_id"`
+	AgentsviewDBPath   string `json:"agentsview_db_path"`
+	DataDir            string `json:"data_dir"`
+	ServerPort         int    `json:"server_port"`
 }
 
 // DefaultAgentsviewDBPath returns the standard agentsview DB location if it exists.
