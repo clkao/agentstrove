@@ -40,6 +40,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/agents", s.handleListAgents)
 	s.mux.HandleFunc("GET /api/v1/search", s.handleSearch)
 	s.mux.HandleFunc("GET /api/v1/gitlinks", s.handleLookupGitLinks)
+	s.mux.HandleFunc("GET /api/v1/analytics/usage", s.handleUsageOverview)
+	s.mux.HandleFunc("GET /api/v1/analytics/heatmap", s.handleActivityHeatmap)
+	s.mux.HandleFunc("GET /api/v1/analytics/tools", s.handleToolUsage)
 
 	distSub, _ := fs.Sub(web.DistFS, "dist")
 	fileServer := http.FileServerFS(distSub)
