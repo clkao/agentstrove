@@ -14,15 +14,18 @@ import (
 
 // fakeStore records calls made by the engine for assertion in tests.
 type fakeStore struct {
-	sessions  []store.Session
-	messages  []store.Message
-	toolCalls []store.ToolCall
-	gitLinks  []store.GitLink
+	sessions       []store.Session
+	messages       []store.Message
+	toolCalls      []store.ToolCall
+	gitLinks       []store.GitLink
+	batchCallCount int
+	writeCallCount int
 }
 
 func (f *fakeStore) EnsureSchema(_ context.Context) error { return nil }
 
 func (f *fakeStore) WriteSession(_ context.Context, _ string, sess store.Session, msgs []store.Message, tcs []store.ToolCall) error {
+	f.writeCallCount++
 	f.sessions = append(f.sessions, sess)
 	f.messages = append(f.messages, msgs...)
 	f.toolCalls = append(f.toolCalls, tcs...)
@@ -30,6 +33,7 @@ func (f *fakeStore) WriteSession(_ context.Context, _ string, sess store.Session
 }
 
 func (f *fakeStore) WriteBatch(_ context.Context, _ string, sessions []store.Session, msgs []store.Message, tcs []store.ToolCall) error {
+	f.batchCallCount++
 	f.sessions = append(f.sessions, sessions...)
 	f.messages = append(f.messages, msgs...)
 	f.toolCalls = append(f.toolCalls, tcs...)
