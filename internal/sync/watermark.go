@@ -5,6 +5,7 @@ package sync
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -50,6 +51,9 @@ func (s *SyncState) Save(path string) error {
 	s.LastSyncedAt = time.Now().UTC()
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)

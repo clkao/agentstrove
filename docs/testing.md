@@ -197,7 +197,7 @@ To populate the agentsview SQLite DB and sync it to ClickHouse:
 agentsview -no-browser -port 18923  # ctrl-c after initial sync completes
 
 # 2. Create agentstrove config (one-time setup)
-mkdir -p ~/.config/agentstrove/data
+mkdir -p ~/.config/agentstrove
 cat > ~/.config/agentstrove/config.json << 'EOF'
 {
   "clickhouse_addr": "host.docker.internal:9440",
