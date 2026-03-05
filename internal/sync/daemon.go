@@ -112,6 +112,12 @@ func (d *Daemon) Run(ctx context.Context) error {
 		d.mu.Unlock()
 	}()
 
+	// Trigger initial sync immediately
+	select {
+	case d.syncCh <- struct{}{}:
+	default:
+	}
+
 	var wg gosync.WaitGroup
 
 	wg.Add(3)
