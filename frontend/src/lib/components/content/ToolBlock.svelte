@@ -78,6 +78,12 @@
     {:else if fallbackContent}
       <pre class="tool-content">{fallbackContent}</pre>
     {/if}
+    {#if toolCall?.result_content}
+      <details class="tool-result">
+        <summary class="result-summary">Result</summary>
+        <pre class="tool-content">{toolCall.result_content}</pre>
+      </details>
+    {/if}
   {/if}
 </div>
 
@@ -170,5 +176,21 @@
     line-height: 1.5;
     overflow-x: auto;
     border-top: 1px solid var(--border-muted);
+  }
+
+  .tool-result {
+    border-top: 1px solid var(--border-muted);
+  }
+
+  .result-summary {
+    padding: 4px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .result-summary:hover {
+    color: var(--text-secondary);
   }
 </style>

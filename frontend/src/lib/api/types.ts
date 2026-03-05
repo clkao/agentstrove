@@ -47,12 +47,19 @@ export interface ToolCall {
   input_json: string;
   skill_name: string;
   result_content_length: number | null;
+  result_content: string;
   subagent_session_id: string;
 }
 
 export interface UserInfo {
   id: string;
   name: string;
+}
+
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  path: string;
 }
 
 export interface Filters {
@@ -67,7 +74,7 @@ export interface Filters {
 
 export interface Highlight {
   start: number;
-  length: number;
+  end: number;
 }
 
 export interface SearchResult {

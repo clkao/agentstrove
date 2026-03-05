@@ -5,10 +5,10 @@
   import { sessions } from "../../stores/sessions.svelte.js";
   import { search } from "../../stores/search.svelte.js";
   import { listUsers, listProjects, listAgents } from "../../api/client.js";
-  import type { UserInfo } from "../../api/types.js";
+  import type { UserInfo, ProjectInfo } from "../../api/types.js";
 
   let users = $state<UserInfo[]>([]);
-  let projects = $state<string[]>([]);
+  let projects = $state<ProjectInfo[]>([]);
   let agents = $state<string[]>([]);
 
   let selectedUser = $state("");
@@ -64,7 +64,7 @@
   >
     <option value="">All projects</option>
     {#each projects as proj}
-      <option value={proj}>{proj}</option>
+      <option value={proj.id}>{proj.name}</option>
     {/each}
   </select>
 

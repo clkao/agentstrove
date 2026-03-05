@@ -29,10 +29,10 @@
         parts.push({ text: snippet.slice(pos, h.start), highlight: false });
       }
       parts.push({
-        text: snippet.slice(h.start, h.start + h.length),
+        text: snippet.slice(h.start, h.end),
         highlight: true,
       });
-      pos = h.start + h.length;
+      pos = h.end;
     }
     if (pos < snippet.length) {
       parts.push({ text: snippet.slice(pos), highlight: false });

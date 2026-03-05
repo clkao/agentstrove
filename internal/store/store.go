@@ -51,7 +51,7 @@ type ToolCall struct {
 	InputJSON           string `json:"input_json"`
 	SkillName           string `json:"skill_name"`
 	ResultContentLength *int   `json:"result_content_length"`
-	ResultContent       string `json:"-"`
+	ResultContent       string `json:"result_content"`
 	SubagentSessionID   string `json:"subagent_session_id"`
 }
 

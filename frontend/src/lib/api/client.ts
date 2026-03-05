@@ -6,6 +6,7 @@ import type {
   Session,
   MessageWithToolCalls,
   UserInfo,
+  ProjectInfo,
   Filters,
   SearchPage,
   GitLinkResult,
@@ -67,8 +68,8 @@ export function listUsers(): Promise<UserInfo[]> {
   return fetchJSON<UserInfo[]>("/api/v1/users");
 }
 
-export function listProjects(): Promise<string[]> {
-  return fetchJSON<string[]>("/api/v1/projects");
+export function listProjects(): Promise<ProjectInfo[]> {
+  return fetchJSON<ProjectInfo[]>("/api/v1/projects");
 }
 
 export function listAgents(): Promise<string[]> {
