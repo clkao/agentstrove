@@ -37,8 +37,6 @@
       <div class="session-meta">
         <span class="meta-item" title="User">{s.user_name}</span>
         <span class="meta-sep"></span>
-        <span class="meta-item" title="User ID">{s.user_id}</span>
-        <span class="meta-sep"></span>
         <span class="meta-item" title="Project">{s.project_name}</span>
         <span class="meta-sep"></span>
         <span class="meta-item" title="Agent">{formatAgentName(s.agent_type)}</span>
