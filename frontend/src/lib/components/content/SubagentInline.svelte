@@ -4,7 +4,7 @@
   import type { MessageWithToolCalls } from "../../api/types.js";
   import { getSessionMessages } from "../../api/client.js";
   import { router, buildUrl } from "../../stores/router.svelte.js";
-  import MessageContent from "./MessageContent.svelte";
+  import MessageList from "./MessageList.svelte";
 
   interface Props {
     sessionId: string;
@@ -63,9 +63,7 @@
       <div class="subagent-error">{error}</div>
     {:else if messages}
       <div class="subagent-messages">
-        {#each messages as message (message.ordinal)}
-          <MessageContent {message} />
-        {/each}
+        <MessageList {messages} />
       </div>
     {/if}
   {/if}
@@ -136,6 +134,14 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .subagent-messages :global(.message) {
+    border-left: none;
+  }
+
+  .subagent-messages :global(.tool-call-group) {
+    border-left: none;
   }
 
   .subagent-loading {
