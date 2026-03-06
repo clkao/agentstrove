@@ -19,7 +19,7 @@ import (
 
 // SyncVersion is incremented when the sync logic changes in a way that requires
 // a full re-sync of all sessions.
-const SyncVersion = 2
+const SyncVersion = 3
 
 const syncChunkSize = 50
 
