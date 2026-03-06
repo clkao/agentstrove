@@ -81,7 +81,7 @@
               title="{s.commit_count} git commit{s.commit_count === 1 ? '' : 's'} linked"
               onclick={() => gitLinksOpen = !gitLinksOpen}
             >
-              &#x2022; {s.commit_count} commit{s.commit_count === 1 ? '' : 's'}
+              {s.commit_count} commit{s.commit_count === 1 ? '' : 's'}
             </button>
             {#if gitLinksOpen && gitLinks.length > 0}
               <div class="gitlinks-dropdown">
@@ -154,18 +154,19 @@
   }
 
   .commit-badge {
-    font-size: 10px;
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: var(--bg-inset);
-    color: var(--text-secondary);
-    border: none;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-green) 15%, transparent);
+    color: var(--accent-green);
+    border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
     cursor: pointer;
     font-family: inherit;
+    font-weight: 500;
   }
 
   .commit-badge:hover {
-    background: var(--bg-surface-hover);
+    background: color-mix(in srgb, var(--accent-green) 25%, transparent);
   }
 
   .gitlinks-dropdown {
