@@ -5,16 +5,21 @@
   import {
     extractToolParamMeta,
     generateFallbackContent,
+    truncate,
   } from "../../utils/tool-params.js";
+  import SubagentInline from "./SubagentInline.svelte";
 
   interface Props {
     content: string;
     label?: string;
     toolCall?: ToolCall;
+    startExpanded?: boolean;
   }
 
-  let { content, label, toolCall }: Props = $props();
+  let { content, label, toolCall, startExpanded = false }: Props = $props();
   let collapsed: boolean = $state(true);
+
+  $effect(() => { if (startExpanded) collapsed = false; });
 
   let previewLine = $derived(
     content.split("\n")[0]?.slice(0, 100) ?? "",
@@ -29,6 +34,22 @@
     }
   });
 
+  let isTaskTool = $derived(
+    toolCall?.tool_name === "Task" || toolCall?.tool_name === "Agent",
+  );
+
+  let taskMeta = $derived.by(() => {
+    if (!isTaskTool || !inputParams) return null;
+    const meta: Array<{ label: string; value: string }> = [];
+    if (inputParams.subagent_type) {
+      meta.push({ label: "type", value: String(inputParams.subagent_type) });
+    }
+    if (inputParams.description) {
+      meta.push({ label: "description", value: truncate(String(inputParams.description), 80) });
+    }
+    return meta.length ? meta : null;
+  });
+
   let toolParamMeta = $derived.by(() => {
     if (!inputParams || !toolCall) return null;
     return extractToolParamMeta(toolCall.tool_name, inputParams);
@@ -41,6 +62,10 @@
       inputParams,
     );
   });
+
+  let hasSubagent = $derived(
+    !!(toolCall?.subagent_session_id),
+  );
 </script>
 
 <div class="tool-block">
@@ -73,6 +98,16 @@
         {/each}
       </div>
     {/if}
+    {#if taskMeta}
+      <div class="tool-meta">
+        {#each taskMeta as { label: metaLabel, value }}
+          <span class="meta-tag">
+            <span class="meta-label">{metaLabel}:</span>
+            {value}
+          </span>
+        {/each}
+      </div>
+    {/if}
     {#if content}
       <pre class="tool-content">{content}</pre>
     {:else if fallbackContent}
@@ -84,6 +119,9 @@
         <pre class="tool-content">{toolCall.result_content}</pre>
       </details>
     {/if}
+  {/if}
+  {#if hasSubagent}
+    <SubagentInline sessionId={toolCall.subagent_session_id} />
   {/if}
 </div>
 

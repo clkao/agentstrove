@@ -16,9 +16,11 @@
     message: MessageWithToolCalls;
     developerName?: string;
     agentName?: string;
+    expandTools?: boolean;
+    highlight?: boolean;
   }
 
-  let { message, developerName, agentName }: Props = $props();
+  let { message, developerName, agentName, expandTools = false, highlight = false }: Props = $props();
 
   let segments = $derived(
     enrichSegments(
@@ -41,6 +43,7 @@
 <div
   class="message"
   class:is-user={isUser}
+  class:highlight-target={highlight}
   style:border-left-color={accentColor}
   style:background={roleBg}
 >
@@ -71,6 +74,7 @@
           content={segment.content}
           label={segment.label}
           toolCall={segment.toolCall}
+          startExpanded={expandTools}
         />
       {:else if segment.type === "code"}
         <CodeBlock content={segment.content} language={segment.label} />
@@ -88,6 +92,15 @@
     border-left: 4px solid;
     padding: 14px 20px;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+
+  .highlight-target {
+    animation: highlight-fade 3s ease-out;
+  }
+
+  @keyframes highlight-fade {
+    0% { box-shadow: inset 0 0 0 100px rgba(250, 204, 21, 0.25); }
+    100% { box-shadow: inset 0 0 0 100px transparent; }
   }
 
   .message-header {

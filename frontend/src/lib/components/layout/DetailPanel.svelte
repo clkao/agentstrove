@@ -6,6 +6,8 @@
   import { formatTimestamp, formatAgentName, formatNumber } from "../../utils/format.js";
   import MessageList from "../content/MessageList.svelte";
 
+  let highlightOrdinal = $state<number | null>(null);
+
   $effect(() => {
     if (
       !messages.loading &&
@@ -14,11 +16,17 @@
     ) {
       const ordinal = messages.targetOrdinal;
       messages.targetOrdinal = null;
+      highlightOrdinal = ordinal;
       requestAnimationFrame(() => {
         const el = document.querySelector(`[data-ordinal="${ordinal}"]`);
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
     }
+  });
+
+  $effect(() => {
+    sessions.activeSessionId;
+    highlightOrdinal = null;
   });
 </script>
 
@@ -26,11 +34,8 @@
   {#if sessions.activeSession}
     {@const s = sessions.activeSession}
     <header class="session-header">
-      <h2 class="session-title">{s.first_message ?? "Untitled conversation"}</h2>
       <div class="session-meta">
         <span class="meta-item" title="User">{s.user_name}</span>
-        <span class="meta-sep"></span>
-        <span class="meta-item" title="User ID">{s.user_id}</span>
         <span class="meta-sep"></span>
         <span class="meta-item" title="Project">{s.project_name}</span>
         <span class="meta-sep"></span>
@@ -48,7 +53,7 @@
       {#if messages.loading}
         <div class="loading-placeholder">Loading messages...</div>
       {:else if messages.messages.length > 0}
-        <MessageList messages={messages.messages} developerName={s.user_name} agentName={formatAgentName(s.agent_type)} />
+        <MessageList messages={messages.messages} developerName={s.user_name} agentName={formatAgentName(s.agent_type)} {highlightOrdinal} />
       {:else}
         <div class="loading-placeholder">No messages found.</div>
       {/if}
@@ -74,14 +79,6 @@
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-default);
     background: var(--bg-surface);
-  }
-
-  .session-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin-bottom: 6px;
   }
 
   .session-meta {
