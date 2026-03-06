@@ -419,6 +419,40 @@ func TestLookupGitLinks_BySHA(t *testing.T) {
 	assert.Equal(t, "sess-1", results[0].SessionID)
 }
 
+func TestGetSessionGitLinks(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/gitlinks")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var links []store.GitLink
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&links))
+	assert.Len(t, links, 1)
+	assert.Equal(t, "sess-1", links[0].SessionID)
+	assert.Equal(t, "abc1234", links[0].CommitSHA)
+	assert.Equal(t, "high", links[0].Confidence)
+	assert.Equal(t, 1, links[0].MessageOrdinal)
+}
+
+func TestGetSessionGitLinks_Empty(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-2/gitlinks")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var links []store.GitLink
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&links))
+	assert.Len(t, links, 0)
+}
+
 func TestLookupGitLinks_MissingParams(t *testing.T) {
 	ts, _ := setupTestAPI(t)
 

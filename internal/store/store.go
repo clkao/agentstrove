@@ -199,6 +199,7 @@ type ReadStore interface {
 	ListProjects(ctx context.Context, orgID string) ([]ProjectInfo, error)
 	ListAgents(ctx context.Context, orgID string) ([]string, error)
 	Search(ctx context.Context, orgID string, query SearchQuery) (*SearchPage, error)
+	GetSessionGitLinks(ctx context.Context, orgID string, sessionID string) ([]GitLink, error)
 	LookupGitLinks(ctx context.Context, orgID string, sha string, prURL string) ([]GitLinkResult, error)
 	UsageByUser(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]UserUsage, error)
 	ActivityHeatmap(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]HeatmapCell, error)

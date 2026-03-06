@@ -458,6 +458,43 @@ func (s *ClickHouseStore) LookupGitLinks(ctx context.Context, orgID string, sha 
 	return results, nil
 }
 
+// gitLinkRow is the scan target for per-session git link queries.
+type gitLinkRow struct {
+	SessionID      string `ch:"session_id"`
+	CommitSHA      string `ch:"commit_sha"`
+	PRURL          string `ch:"pr_url"`
+	LinkType       string `ch:"link_type"`
+	Confidence     string `ch:"confidence"`
+	MessageOrdinal uint32 `ch:"message_ordinal"`
+}
+
+// GetSessionGitLinks returns all git links for a session ordered by message_ordinal ASC.
+func (s *ClickHouseStore) GetSessionGitLinks(ctx context.Context, orgID string, sessionID string) ([]GitLink, error) {
+	var rows []gitLinkRow
+	err := s.conn.Select(ctx, &rows,
+		`SELECT session_id, commit_sha, pr_url, link_type, confidence, message_ordinal
+		FROM git_links FINAL
+		WHERE org_id = ? AND session_id = ?
+		ORDER BY message_ordinal ASC, link_type ASC`,
+		orgID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get session git links: %w", err)
+	}
+
+	links := make([]GitLink, 0, len(rows))
+	for _, r := range rows {
+		links = append(links, GitLink{
+			SessionID:      r.SessionID,
+			CommitSHA:      r.CommitSHA,
+			PRURL:          r.PRURL,
+			LinkType:       r.LinkType,
+			Confidence:     r.Confidence,
+			MessageOrdinal: int(r.MessageOrdinal),
+		})
+	}
+	return links, nil
+}
+
 // chWhereClause joins conditions with AND and prepends WHERE, or returns empty string.
 func chWhereClause(conditions []string) string {
 	if len(conditions) == 0 {
