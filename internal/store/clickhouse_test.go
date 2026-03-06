@@ -28,7 +28,7 @@ func clickhouseUser() string {
 	if u := os.Getenv("CLICKHOUSE_USER"); u != "" {
 		return u
 	}
-	return "agentstrove"
+	return "agentlore"
 }
 
 func clickhousePassword() string {

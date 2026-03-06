@@ -3,7 +3,7 @@
 package gitlinks
 
 import (
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/store"
 )
 
 // ExtractGitLinks scans Bash tool calls' result content for git commit SHAs

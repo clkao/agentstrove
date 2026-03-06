@@ -1,6 +1,6 @@
-# Agentstrove
+# Agentlore
 
-Open a PR, see the AI conversation that produced it. Agentstrove turns your team's agent conversations into a shared, searchable resource linked to your code.
+Open a PR, see the AI conversation that produced it. Agentlore turns your team's agent conversations into a shared, searchable resource linked to your code.
 
 ## What It Does
 
@@ -36,10 +36,10 @@ Developer's machine                     Shared infrastructure
 docker compose up -d clickhouse
 
 # Sync local conversations
-agentstrove sync
+agentlore sync
 
 # Browse conversations
-agentstrove serve
+agentlore serve
 # Open http://localhost:8080
 ```
 

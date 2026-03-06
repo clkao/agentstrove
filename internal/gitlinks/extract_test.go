@@ -5,7 +5,7 @@ package gitlinks
 import (
 	"testing"
 
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

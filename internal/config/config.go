@@ -43,13 +43,13 @@ func DefaultAgentsviewDBPath() string {
 	return ""
 }
 
-// DefaultDataDir returns ~/.config/agentstrove/data as the default data directory.
+// DefaultDataDir returns ~/.config/agentlore/data as the default data directory.
 func DefaultDataDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".config", "agentstrove", "data")
+	return filepath.Join(home, ".config", "agentlore", "data")
 }
 
 // Load reads configuration from a JSON file at the given path.

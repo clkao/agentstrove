@@ -1,4 +1,4 @@
--- ABOUTME: ClickHouse schema for agentstrove
+-- ABOUTME: ClickHouse schema for agentlore
 -- ABOUTME: Canonical DDL for sessions, messages, tool_calls, git_links tables
 
 CREATE TABLE IF NOT EXISTS sessions (

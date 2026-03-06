@@ -31,7 +31,7 @@
 
 <header class="header">
   <div class="header-left">
-    <span class="header-title">Agentstrove</span>
+    <span class="header-title">Agentlore</span>
 
     <select
       class="project-select"

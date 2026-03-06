@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/store"
 )
 
 // MessageWithToolCalls combines a message with its associated tool calls for API responses.

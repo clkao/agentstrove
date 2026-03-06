@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/clkao/agentstrove/internal/api"
-	"github.com/clkao/agentstrove/internal/config"
-	"github.com/clkao/agentstrove/internal/reader"
-	"github.com/clkao/agentstrove/internal/secrets"
-	"github.com/clkao/agentstrove/internal/store"
-	astSync "github.com/clkao/agentstrove/internal/sync"
+	"github.com/clkao/agentlore/internal/api"
+	"github.com/clkao/agentlore/internal/config"
+	"github.com/clkao/agentlore/internal/reader"
+	"github.com/clkao/agentlore/internal/secrets"
+	"github.com/clkao/agentlore/internal/store"
+	astSync "github.com/clkao/agentlore/internal/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

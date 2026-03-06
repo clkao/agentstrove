@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/clkao/agentstrove/internal/api"
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/api"
+	"github.com/clkao/agentlore/internal/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +31,7 @@ func clickhouseUser() string {
 	if u := os.Getenv("CLICKHOUSE_USER"); u != "" {
 		return u
 	}
-	return "agentstrove"
+	return "agentlore"
 }
 
 func clickhousePassword() string {
