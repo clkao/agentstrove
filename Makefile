@@ -19,8 +19,10 @@ test-e2e:
 
 test-all: test test-store test-e2e
 
+PREFIX ?= $(HOME)/.local
 install: build
-	install -m 755 agentlore $(DESTDIR)/usr/local/bin/agentlore
+	install -d $(PREFIX)/bin
+	install -m 755 agentlore $(PREFIX)/bin/agentlore
 
 serve: build
 	./agentlore serve
