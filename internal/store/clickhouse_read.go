@@ -475,7 +475,7 @@ func (s *ClickHouseStore) GetSessionGitLinks(ctx context.Context, orgID string, 
 		`SELECT session_id, commit_sha, pr_url, link_type, confidence, message_ordinal
 		FROM git_links FINAL
 		WHERE org_id = ? AND session_id = ?
-		ORDER BY message_ordinal ASC`,
+		ORDER BY message_ordinal ASC, link_type ASC`,
 		orgID, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("get session git links: %w", err)
