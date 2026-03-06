@@ -66,9 +66,13 @@ func (s *SyncState) IsSessionChanged(sessionID, fileHash string) bool {
 	return !ok || stored.FileHash != fileHash
 }
 
-// GetLastOrdinal returns the last synced ordinal for a session, or 0 if not tracked.
+// GetLastOrdinal returns the last synced ordinal for a session, or -1 if not tracked.
 func (s *SyncState) GetLastOrdinal(sessionID string) int {
-	return s.Sessions[sessionID].LastOrdinal
+	wm, ok := s.Sessions[sessionID]
+	if !ok {
+		return -1
+	}
+	return wm.LastOrdinal
 }
 
 // MarkSynced records a session as synced with its file hash and last ordinal,

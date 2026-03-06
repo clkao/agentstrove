@@ -132,7 +132,7 @@ func TestSyncState_GetLastOrdinal_UntrackedSession(t *testing.T) {
 	state := &SyncState{
 		Sessions: map[string]SessionWatermark{},
 	}
-	assert.Equal(t, 0, state.GetLastOrdinal("sess-unknown"))
+	assert.Equal(t, -1, state.GetLastOrdinal("sess-unknown"))
 }
 
 func TestSyncState_MarkSynced_UpdatesSession(t *testing.T) {
