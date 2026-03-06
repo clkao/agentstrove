@@ -34,7 +34,6 @@
   {#if sessions.activeSession}
     {@const s = sessions.activeSession}
     <header class="session-header">
-      <h2 class="session-title">{s.first_message ?? "Untitled conversation"}</h2>
       <div class="session-meta">
         <span class="meta-item" title="User">{s.user_name}</span>
         <span class="meta-sep"></span>
@@ -82,14 +81,6 @@
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-default);
     background: var(--bg-surface);
-  }
-
-  .session-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin-bottom: 6px;
   }
 
   .session-meta {
