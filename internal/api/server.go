@@ -32,6 +32,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
+	s.mux.HandleFunc("GET /api/v1/sessions/{id}/gitlinks", s.handleGetSessionGitLinks)
 	s.mux.HandleFunc("GET /api/v1/sessions/{id}/messages", s.handleGetMessages)
 	s.mux.HandleFunc("GET /api/v1/sessions/{id}", s.handleGetSession)
 	s.mux.HandleFunc("GET /api/v1/sessions", s.handleListSessions)

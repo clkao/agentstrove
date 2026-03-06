@@ -9,6 +9,7 @@ import type {
   ProjectInfo,
   Filters,
   SearchPage,
+  GitLink,
   GitLinkResult,
   UserUsage,
   HeatmapCell,
@@ -79,6 +80,12 @@ export function listProjects(): Promise<ProjectInfo[]> {
 
 export function listAgents(): Promise<string[]> {
   return fetchJSON<string[]>("/api/v1/agents");
+}
+
+export function getSessionGitLinks(id: string): Promise<GitLink[]> {
+  return fetchJSON<GitLink[]>(
+    `/api/v1/sessions/${encodeURIComponent(id)}/gitlinks`,
+  );
 }
 
 export function lookupGitLinks(sha?: string, pr?: string): Promise<GitLinkResult[]> {

@@ -97,6 +97,15 @@ export interface SearchPage {
   total: number;
 }
 
+export interface GitLink {
+  session_id: string;
+  commit_sha: string;
+  pr_url: string;
+  link_type: string;
+  confidence: string;
+  message_ordinal: number;
+}
+
 export interface GitLinkResult {
   session_id: string;
   user_name: string;

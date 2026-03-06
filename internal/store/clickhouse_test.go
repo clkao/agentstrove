@@ -1158,3 +1158,39 @@ func TestToolUsageDistributionEmpty(t *testing.T) {
 	assert.NotNil(t, stats, "should return empty slice, not nil")
 	assert.Len(t, stats, 0)
 }
+
+func TestGetSessionGitLinks(t *testing.T) {
+	s := setupTestStore(t)
+	seedTestData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	// session-2 has 2 git links seeded (commit + PR)
+	links, err := s.GetSessionGitLinks(ctx, orgID, "session-2")
+	require.NoError(t, err)
+	assert.Len(t, links, 2)
+
+	// Ordered by message_ordinal ASC
+	assert.Equal(t, "session-2", links[0].SessionID)
+	assert.Equal(t, "abc1234def5678", links[0].CommitSHA)
+	assert.Equal(t, "commit", links[0].LinkType)
+	assert.Equal(t, "high", links[0].Confidence)
+	assert.Equal(t, 6, links[0].MessageOrdinal)
+
+	assert.Equal(t, "https://github.com/org/repo/pull/42", links[1].PRURL)
+	assert.Equal(t, "pr", links[1].LinkType)
+	assert.Equal(t, "medium", links[1].Confidence)
+}
+
+func TestGetSessionGitLinksEmpty(t *testing.T) {
+	s := setupTestStore(t)
+	seedTestData(t, s)
+	ctx := context.Background()
+	orgID := ""
+
+	// session-1 has no git links
+	links, err := s.GetSessionGitLinks(ctx, orgID, "session-1")
+	require.NoError(t, err)
+	assert.NotNil(t, links, "should return empty slice, not nil")
+	assert.Len(t, links, 0)
+}
