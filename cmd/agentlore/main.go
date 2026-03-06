@@ -96,7 +96,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  version   Show version information\n")
 	fmt.Fprintf(os.Stderr, "\nFlags:\n")
 	fmt.Fprintf(os.Stderr, "  --config path   Config file (default: %s)\n", defaultConfigPath())
-	fmt.Fprintf(os.Stderr, "  --port N        Server port (default: 8080, serve only)\n")
+	fmt.Fprintf(os.Stderr, "  --port N        Server port (default: 9090, serve only)\n")
 	fmt.Fprintf(os.Stderr, "  --force         Force full resync of all sessions (sync only)\n")
 	fmt.Fprintf(os.Stderr, "  --reset-db      Drop and recreate the ClickHouse database (sync only)\n")
 }
@@ -320,7 +320,7 @@ func runServe(configPath string, portOverride int) int {
 		port = cfg.ServerPort
 	}
 	if port == 0 {
-		port = 8080
+		port = 9090
 	}
 	addr := fmt.Sprintf(":%d", port)
 

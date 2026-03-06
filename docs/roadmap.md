@@ -45,5 +45,5 @@ The connection point is narrow: JWT issuance and validation. Agentlore stores `o
 
 ## Dependencies
 
-- [agentsview](https://github.com/clkao/agentsview) — local agent session collector. Agentlore reads its SQLite database.
+- [agentsview](https://github.com/wesm/agentsview) — local agent session collector. Agentlore reads its SQLite database.
 - ClickHouse — shared conversation storage. Self-hosted via Docker or managed (ClickHouse Cloud).
