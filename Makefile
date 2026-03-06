@@ -1,4 +1,4 @@
-.PHONY: build frontend test test-store test-e2e test-all serve clean
+.PHONY: build frontend test test-store test-e2e test-all serve install clean
 
 build: frontend
 	go build -o agentlore ./cmd/agentlore/
@@ -18,6 +18,9 @@ test-e2e:
 	go test ./e2e/... -count=1 -v -timeout 120s
 
 test-all: test test-store test-e2e
+
+install: build
+	install -m 755 agentlore $(DESTDIR)/usr/local/bin/agentlore
 
 serve: build
 	./agentlore serve
