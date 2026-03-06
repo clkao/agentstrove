@@ -136,6 +136,14 @@
     gap: 4px;
   }
 
+  .subagent-messages :global(.message) {
+    border-left: none;
+  }
+
+  .subagent-messages :global(.tool-call-group) {
+    border-left: none;
+  }
+
   .subagent-loading {
     padding: 8px 14px;
     font-size: 12px;
