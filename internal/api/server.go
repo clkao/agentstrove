@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/clkao/agentstrove/internal/store"
-	"github.com/clkao/agentstrove/internal/web"
+	"github.com/clkao/agentlore/internal/store"
+	"github.com/clkao/agentlore/internal/web"
 )
 
 // Server serves the REST API and SPA frontend.

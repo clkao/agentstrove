@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/store"
 )
 
 var (

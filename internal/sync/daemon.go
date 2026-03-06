@@ -12,9 +12,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/clkao/agentstrove/internal/config"
-	"github.com/clkao/agentstrove/internal/reader"
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/config"
+	"github.com/clkao/agentlore/internal/reader"
+	"github.com/clkao/agentlore/internal/store"
 )
 
 // DaemonStatus reports the current state of the daemon.
@@ -50,7 +50,7 @@ func NewDaemon(cfg *config.Config) (*Daemon, error) {
 	}
 	db := cfg.ClickHouseDatabase
 	if db == "" {
-		db = "agentstrove"
+		db = "agentlore"
 	}
 
 	s, err := store.NewClickHouseStoreFromOptions(store.ConnectOptions{

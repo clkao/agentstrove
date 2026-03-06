@@ -35,7 +35,7 @@ Each test suite creates a **unique temporary database** (e.g., `test_abc123`) in
 5. Run tests
 6. `DROP DATABASE test_abc123` in cleanup
 
-This ensures no shared state between test runs and no pollution of the main `agentstrove` database.
+This ensures no shared state between test runs and no pollution of the main `agentlore` database.
 
 ### Test Layers
 
@@ -196,22 +196,22 @@ To populate the agentsview SQLite DB and sync it to ClickHouse:
 # 1. Run agentsview to sync sessions into ~/.agentsview/sessions.db
 agentsview -no-browser -port 18923  # ctrl-c after initial sync completes
 
-# 2. Create agentstrove config (one-time setup)
-mkdir -p ~/.config/agentstrove
-cat > ~/.config/agentstrove/config.json << 'EOF'
+# 2. Create agentlore config (one-time setup)
+mkdir -p ~/.config/agentlore
+cat > ~/.config/agentlore/config.json << 'EOF'
 {
   "clickhouse_addr": "host.docker.internal:9440",
-  "clickhouse_user": "agentstrove",
-  "clickhouse_password": "agentstrove",
+  "clickhouse_user": "agentlore",
+  "clickhouse_password": "agentlore",
   "agentsview_db_path": "/home/vscode/.agentsview/sessions.db"
 }
 EOF
 
 # 3. Build with CGO (arm64 devcontainer needs GOARCH override, see CLAUDE.md)
-GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
+GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentlore ./cmd/agentlore
 
 # 4. Sync to ClickHouse
-/tmp/agentstrove sync
+/tmp/agentlore sync
 ```
 
 Re-run steps 1 and 4 to pick up new sessions after more Claude Code usage.
@@ -286,10 +286,10 @@ When running an E2E validation session:
 For manual paths:
 ```bash
 # Build and sync
-go build -o /tmp/agentstrove ./cmd/agentstrove/ && /tmp/agentstrove sync
+go build -o /tmp/agentlore ./cmd/agentlore/ && /tmp/agentlore sync
 
 # Serve
-/tmp/agentstrove serve --port 8080
+/tmp/agentlore serve --port 8080
 
 # Query API
 curl -s localhost:8080/api/v1/sessions | jq '.total, (.sessions | length)'

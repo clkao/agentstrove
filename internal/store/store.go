@@ -1,4 +1,4 @@
-// ABOUTME: Domain types and storage interfaces for agentstrove.
+// ABOUTME: Domain types and storage interfaces for agentlore.
 // ABOUTME: Store handles writes; ReadStore handles reads — they are separate interfaces.
 
 package store

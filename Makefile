@@ -1,7 +1,7 @@
-.PHONY: build frontend test test-store test-e2e test-all serve clean
+.PHONY: build frontend test test-store test-e2e test-all serve install clean
 
 build: frontend
-	go build -o agentstrove ./cmd/agentstrove/
+	go build -o agentlore ./cmd/agentlore/
 
 frontend:
 	cd frontend && npm install && npm run build
@@ -19,9 +19,14 @@ test-e2e:
 
 test-all: test test-store test-e2e
 
+PREFIX ?= $(HOME)/.local
+install: build
+	install -d $(PREFIX)/bin
+	install -m 755 agentlore $(PREFIX)/bin/agentlore
+
 serve: build
-	./agentstrove serve
+	./agentlore serve
 
 clean:
-	rm -f agentstrove
+	rm -f agentlore
 	rm -rf internal/web/dist

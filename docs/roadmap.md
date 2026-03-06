@@ -2,7 +2,7 @@
 
 ## Current State
 
-Agentstrove is functional for self-hosted team use: sync daemon, conversation browser, full-text search, git linking, and secret masking. No auth dependency.
+Agentlore is functional for self-hosted team use: sync daemon, conversation browser, full-text search, git linking, and secret masking. No auth dependency.
 
 ## Data Model
 
@@ -41,9 +41,9 @@ Authentication, org gating, and multi-tenant access control live in a separate p
 | Authenticated ingestion | Daemon gets JWT, ClickHouse validates via JWKS |
 | Multi-tenant access control | API middleware extracts org_id from JWT |
 
-The connection point is narrow: JWT issuance and validation. Agentstrove stores `org_id` and `user_id` on every record but doesn't know or care where they come from.
+The connection point is narrow: JWT issuance and validation. Agentlore stores `org_id` and `user_id` on every record but doesn't know or care where they come from.
 
 ## Dependencies
 
-- [agentsview](https://github.com/clkao/agentsview) — local agent session collector. Agentstrove reads its SQLite database.
+- [agentsview](https://github.com/clkao/agentsview) — local agent session collector. Agentlore reads its SQLite database.
 - ClickHouse — shared conversation storage. Self-hosted via Docker or managed (ClickHouse Cloud).

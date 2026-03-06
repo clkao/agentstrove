@@ -1,4 +1,4 @@
-module github.com/clkao/agentstrove
+module github.com/clkao/agentlore
 
 go 1.24.1
 

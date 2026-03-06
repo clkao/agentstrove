@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/clkao/agentstrove/internal/api"
-	"github.com/clkao/agentstrove/internal/config"
-	"github.com/clkao/agentstrove/internal/reader"
-	"github.com/clkao/agentstrove/internal/store"
-	astSync "github.com/clkao/agentstrove/internal/sync"
+	"github.com/clkao/agentlore/internal/api"
+	"github.com/clkao/agentlore/internal/config"
+	"github.com/clkao/agentlore/internal/reader"
+	"github.com/clkao/agentlore/internal/store"
+	astSync "github.com/clkao/agentlore/internal/sync"
 )
 
 var (
@@ -71,7 +71,7 @@ func run() int {
 
 	switch subcmd {
 	case "version":
-		fmt.Printf("agentstrove %s (commit=%s, built=%s)\n", version, commit, buildDate)
+		fmt.Printf("agentlore %s (commit=%s, built=%s)\n", version, commit, buildDate)
 		return 0
 	case "sync":
 		return runSync(configPath, force, resetDB)
@@ -87,8 +87,8 @@ func run() int {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "agentstrove %s\n\n", version)
-	fmt.Fprintf(os.Stderr, "Usage: agentstrove <command> [flags]\n\n")
+	fmt.Fprintf(os.Stderr, "agentlore %s\n\n", version)
+	fmt.Fprintf(os.Stderr, "Usage: agentlore <command> [flags]\n\n")
 	fmt.Fprintf(os.Stderr, "Commands:\n")
 	fmt.Fprintf(os.Stderr, "  sync      Sync local agentsview data to ClickHouse (one-shot)\n")
 	fmt.Fprintf(os.Stderr, "  daemon    Watch agentsview for changes and sync continuously\n")
@@ -102,7 +102,7 @@ func printUsage() {
 }
 
 func defaultConfigPath() string {
-	return filepath.Join(os.Getenv("HOME"), ".config", "agentstrove", "config.json")
+	return filepath.Join(os.Getenv("HOME"), ".config", "agentlore", "config.json")
 }
 
 func loadConfig(configPath string) (*config.Config, bool) {
@@ -134,7 +134,7 @@ func clickhouseDatabase(cfg *config.Config) string {
 	if cfg.ClickHouseDatabase != "" {
 		return cfg.ClickHouseDatabase
 	}
-	return "agentstrove"
+	return "agentlore"
 }
 
 func openStore(cfg *config.Config) (*store.ClickHouseStore, error) {
@@ -172,7 +172,7 @@ func runSync(configPath string, force, resetDB bool) int {
 	}
 
 	userID, userName := cfg.ResolvedUserIdentity()
-	log.Printf("agentstrove sync starting")
+	log.Printf("agentlore sync starting")
 	log.Printf("  user: %s <%s>", userName, userID)
 	log.Printf("  agentsview db: %s", cfg.AgentsviewDBPath)
 	log.Printf("  clickhouse: %s", clickhouseAddr(cfg))
@@ -192,7 +192,7 @@ func runSync(configPath string, force, resetDB bool) int {
 	defer func() { _ = s.Close() }()
 
 	if resetDB {
-		log.Printf("agentstrove sync: --reset-db specified, dropping and recreating database")
+		log.Printf("agentlore sync: --reset-db specified, dropping and recreating database")
 		if err := s.ResetDatabase(context.Background()); err != nil {
 			fmt.Fprintf(os.Stderr, "Error resetting database: %v\n", err)
 			return 1
@@ -212,7 +212,7 @@ func runSync(configPath string, force, resetDB bool) int {
 	}
 
 	if force {
-		log.Printf("agentstrove sync: --force specified, resetting watermark")
+		log.Printf("agentlore sync: --force specified, resetting watermark")
 		engine.ForceResync()
 	}
 
@@ -233,7 +233,7 @@ func runSync(configPath string, force, resetDB bool) int {
 		return 1
 	}
 
-	log.Printf("agentstrove sync done: %d synced, %d skipped, %d secrets, %d errors",
+	log.Printf("agentlore sync done: %d synced, %d skipped, %d secrets, %d errors",
 		result.SessionsSynced, result.SessionsSkipped, result.SecretsDetected, len(result.Errors))
 
 	if len(result.Errors) > 0 {
@@ -261,7 +261,7 @@ func runDaemon(configPath string) int {
 	}
 
 	userID, userName := cfg.ResolvedUserIdentity()
-	log.Printf("agentstrove daemon starting")
+	log.Printf("agentlore daemon starting")
 	log.Printf("  user: %s <%s>", userName, userID)
 	log.Printf("  agentsview db: %s", cfg.AgentsviewDBPath)
 	log.Printf("  clickhouse: %s", clickhouseAddr(cfg))
@@ -290,7 +290,7 @@ func runDaemon(configPath string) int {
 	}
 
 	status := d.Status()
-	log.Printf("agentstrove daemon stopped")
+	log.Printf("agentlore daemon stopped")
 	log.Printf("  total sessions synced: %d", status.TotalSessionsSynced)
 	log.Printf("  total secrets detected: %d", status.TotalSecretsDetected)
 
@@ -303,7 +303,7 @@ func runServe(configPath string, portOverride int) int {
 		return 1
 	}
 
-	log.Printf("agentstrove serve starting")
+	log.Printf("agentlore serve starting")
 	log.Printf("  clickhouse: %s", clickhouseAddr(cfg))
 
 	s, err := openStore(cfg)
@@ -334,7 +334,7 @@ func runServe(configPath string, portOverride int) int {
 
 	httpDone := make(chan error, 1)
 	go func() {
-		log.Printf("agentstrove server listening on %s", addr)
+		log.Printf("agentlore server listening on %s", addr)
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			httpDone <- err
 		}
@@ -356,7 +356,7 @@ func runServe(configPath string, portOverride int) int {
 		log.Printf("shutdown error: %v", err)
 	}
 
-	log.Printf("agentstrove server stopped")
+	log.Printf("agentlore server stopped")
 
 	return 0
 }

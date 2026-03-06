@@ -1,4 +1,4 @@
-# Agentstrove — Project Context
+# Agentlore — Project Context
 
 ## What This Is
 
@@ -15,7 +15,7 @@ Team visibility layer for AI agent conversations. Syncs local agent sessions (co
 ## Project Structure
 
 ```
-cmd/agentstrove/        CLI entry point (sync, serve, daemon subcommands)
+cmd/agentlore/        CLI entry point (sync, serve, daemon subcommands)
 internal/
   config/               Config loading, git-based identity resolution
   reader/               agentsview SQLite reader (read-only)
@@ -99,7 +99,7 @@ Each test suite creates a unique temporary database for isolation — no shared 
 The devcontainer's Go toolchain is `linux-amd64` running under Rosetta on ARM64 Macs. CGO builds (needed for the SQLite reader) require the correct GOARCH:
 
 ```bash
-GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentstrove ./cmd/agentstrove
+GOARCH=arm64 CGO_ENABLED=1 go build -o /tmp/agentlore ./cmd/agentlore
 ```
 
 Without `GOARCH=arm64`, gcc fails with `-m64` error. Pure Go tests (`CGO_ENABLED=0 go test ./internal/sync/...`) don't need this.
@@ -118,4 +118,4 @@ See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood sync 
 
 ## Auth Is a Separate Project
 
-Authentication, org gating, and multi-tenant access control live in a separate repo. The interface between agentstrove and the auth layer is JWT: the auth service issues tokens, ClickHouse validates them via JWKS. Agentstrove (this repo) is the OSS self-hosted tool with no auth dependency.
+Authentication, org gating, and multi-tenant access control live in a separate repo. The interface between agentlore and the auth layer is JWT: the auth service issues tokens, ClickHouse validates them via JWKS. Agentlore (this repo) is the OSS self-hosted tool with no auth dependency.

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clkao/agentstrove/internal/config"
-	"github.com/clkao/agentstrove/internal/gitlinks"
-	"github.com/clkao/agentstrove/internal/reader"
-	"github.com/clkao/agentstrove/internal/secrets"
-	"github.com/clkao/agentstrove/internal/store"
+	"github.com/clkao/agentlore/internal/config"
+	"github.com/clkao/agentlore/internal/gitlinks"
+	"github.com/clkao/agentlore/internal/reader"
+	"github.com/clkao/agentlore/internal/secrets"
+	"github.com/clkao/agentlore/internal/store"
 )
 
 // SyncVersion is incremented when the sync logic changes in a way that requires

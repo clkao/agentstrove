@@ -5,9 +5,9 @@ services:
       - "8123:8123"
       - "9440:9000"
     environment:
-      CLICKHOUSE_DB: agentstrove
-      CLICKHOUSE_USER: agentstrove
-      CLICKHOUSE_PASSWORD: agentstrove
+      CLICKHOUSE_DB: agentlore
+      CLICKHOUSE_USER: agentlore
+      CLICKHOUSE_PASSWORD: agentlore
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse-data:/var/lib/clickhouse
