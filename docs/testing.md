@@ -24,6 +24,18 @@ export CLICKHOUSE_ADDR=host.docker.internal:9440    # native protocol
 
 Default if unset: `host.docker.internal:9440`.
 
+### Connecting from the Host (Sandbox / Mac)
+
+When running tests directly on the host (outside the devcontainer), ClickHouse is at `localhost:9440`. The compose user/password is `agentlore`/`agentlore`:
+
+```bash
+export CLICKHOUSE_ADDR=localhost:9440
+export CLICKHOUSE_USER=agentlore
+export CLICKHOUSE_PASSWORD=agentlore
+```
+
+Note: The compose maps container native port 9000 → host port 9440 (no TLS). The `Secure` option is not needed for local connections.
+
 ### Test Database Isolation
 
 Each test suite creates a **unique temporary database** (e.g., `test_abc123`) in ClickHouse:
@@ -113,6 +125,30 @@ Uses seeded data: 5+ sessions, multiple users, projects, agents, git links. Runs
 | T36 | Same-timestamp pagination via id DESC tiebreaker | |
 | T37 | Metadata excludes ghost/subagent sessions | |
 | T38 | Empty filter params are no-ops | |
+
+### Analytics
+| ID | Test | Assert |
+|----|------|--------|
+| A1 | Usage overview returns per-user data | 200, includes session_count, message_count, commit_count |
+| A2 | Usage overview includes token fields | total_output_tokens, peak_context_tokens present |
+| A3 | Activity heatmap returns grid | 200, cells with day_of_week/hour/session_count |
+| A4 | Tool usage distribution | 200, tool_name/category/usage_count |
+| A5 | Daily activity includes tokens | 200, total_output_tokens present per day |
+| A6 | Tokens by model | 200, model/output_tokens/context_tokens/message_count |
+| A7 | Tokens by model empty | 200, empty array when no token data |
+| A8 | Date filter applies | date_from/date_to narrows results |
+| A9 | Project filter applies | project_name narrows results |
+| A10 | Invalid date → 400 | |
+
+### Stars, Pins, and Deletes
+| ID | Test | Assert |
+|----|------|--------|
+| SP1 | `GET /api/v1/sessions/{id}/stars` with data | 200, array with session_id/user_id/created_at |
+| SP2 | `GET /api/v1/sessions/{id}/stars` empty | 200, empty array |
+| SP3 | `GET /api/v1/sessions/{id}/pins` with data | 200, array with message_ordinal/note |
+| SP4 | `GET /api/v1/sessions/{id}/pins` empty | 200, empty array |
+| SP5 | `GET /api/v1/session-deletes` with data | 200, array with session_id/user_id |
+| SP6 | `GET /api/v1/session-deletes` empty | 200, empty array |
 
 ### Search
 | ID | Test | Assert |
