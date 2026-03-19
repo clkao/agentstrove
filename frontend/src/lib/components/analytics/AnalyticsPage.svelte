@@ -7,6 +7,7 @@
   import DailyActivityChart from "./DailyActivityChart.svelte";
   import ActivityHeatmap from "./ActivityHeatmap.svelte";
   import ToolUsage from "./ToolUsage.svelte";
+  import ModelTokenUsage from "./ModelTokenUsage.svelte";
 </script>
 
 <div class="analytics-page">
@@ -25,6 +26,7 @@
         <ActivityHeatmap />
         <ToolUsage />
       </div>
+      <ModelTokenUsage />
     </div>
   {/if}
 </div>

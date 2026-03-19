@@ -3,7 +3,7 @@
 <script lang="ts">
   import type { Session } from "../../api/types.js";
   import { router } from "../../stores/router.svelte.js";
-  import { formatRelativeTime, truncate } from "../../utils/format.js";
+  import { formatRelativeTime, formatTokenCount, truncate } from "../../utils/format.js";
 
   let { session }: { session: Session } = $props();
 
@@ -21,11 +21,14 @@
   href="/sessions/{session.id}"
   onclick={handleClick}
 >
-  <div class="session-title">{truncate(session.first_message ?? "Untitled", 80)}</div>
+  <div class="session-title">{truncate(session.display_name || session.first_message || session.id, 80)}</div>
   <div class="session-info">
     <span class="developer">{session.user_name}</span>
     {#if session.commit_count > 0}
       <span class="commit-badge" title="{session.commit_count} git commit{session.commit_count === 1 ? '' : 's'} linked">&#x2022; {session.commit_count}</span>
+    {/if}
+    {#if session.total_output_tokens > 0}
+      <span class="token-badge" title="{session.total_output_tokens.toLocaleString()} output tokens">{formatTokenCount(session.total_output_tokens)} tok</span>
     {/if}
     <span class="time">{formatRelativeTime(session.started_at)}</span>
   </div>
@@ -78,7 +81,8 @@
     white-space: nowrap;
   }
 
-  .commit-badge {
+  .commit-badge,
+  .token-badge {
     flex-shrink: 0;
     font-size: 10px;
     padding: 1px 5px;

@@ -18,6 +18,9 @@ export interface Session {
   parent_session_id: string;
   relationship_type: string;
   commit_count: number;
+  display_name: string;
+  total_output_tokens: number;
+  peak_context_tokens: number;
 }
 
 export interface SessionPage {
@@ -36,6 +39,10 @@ export interface MessageWithToolCalls {
   has_tool_use: boolean;
   content_length: number;
   tool_calls: ToolCall[];
+  model: string;
+  token_usage: string;
+  context_tokens: number;
+  output_tokens: number;
 }
 
 export interface ToolCall {
@@ -130,11 +137,21 @@ export interface UserUsage {
   session_count: number;
   message_count: number;
   commit_count: number;
+  total_output_tokens: number;
+  peak_context_tokens: number;
 }
 
 export interface DailyActivity {
   date: string;
   session_count: number;
+  message_count: number;
+  total_output_tokens: number;
+}
+
+export interface ModelTokenUsage {
+  model: string;
+  output_tokens: number;
+  context_tokens: number;
   message_count: number;
 }
 
@@ -148,4 +165,24 @@ export interface ToolUsageStat {
   tool_name: string;
   category: string;
   usage_count: number;
+}
+
+export interface SessionStar {
+  session_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface MessagePin {
+  session_id: string;
+  message_ordinal: number;
+  user_id: string;
+  note: string;
+  created_at: string;
+}
+
+export interface SessionDelete {
+  session_id: string;
+  user_id: string;
+  created_at: string;
 }

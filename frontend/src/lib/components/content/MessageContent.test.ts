@@ -1,5 +1,5 @@
 // ABOUTME: Behavioral tests for MessageContent rendering.
-// ABOUTME: Verifies text/markdown, tool call display, and thinking block collapsed state.
+// ABOUTME: Verifies text/markdown, tool call display, thinking blocks, model badge, and token info.
 
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/svelte";
@@ -23,6 +23,10 @@ function makeMessage(
     has_tool_use: false,
     content_length: 11,
     tool_calls: [],
+    model: "",
+    token_usage: "",
+    context_tokens: 0,
+    output_tokens: 0,
     ...overrides,
   };
 }
@@ -126,5 +130,110 @@ describe("MessageContent", () => {
     expect(toolBlock).toBeNull();
     const thinkingBlock = container.querySelector(".thinking-block");
     expect(thinkingBlock).toBeNull();
+  });
+
+  it("shows model badge on assistant messages with a model name", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      model: "claude-opus-4-20250514",
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const badge = container.querySelector(".model-badge");
+    expect(badge).toBeTruthy();
+    expect(badge!.textContent).toBe("opus-4");
+  });
+
+  it("does not show model badge when model is empty", () => {
+    const msg = makeMessage({ role: "assistant", model: "" });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const badge = container.querySelector(".model-badge");
+    expect(badge).toBeNull();
+  });
+
+  it("does not show model badge on user messages", () => {
+    const msg = makeMessage({
+      role: "user",
+      model: "claude-opus-4-20250514",
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const badge = container.querySelector(".model-badge");
+    expect(badge).toBeNull();
+  });
+
+  it("shows token info on assistant messages with token counts", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      context_tokens: 45000,
+      output_tokens: 1200,
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const tokenInfo = container.querySelector(".token-info");
+    expect(tokenInfo).toBeTruthy();
+    expect(tokenInfo!.textContent).toContain("ctx: 45k");
+    expect(tokenInfo!.textContent).toContain("out: 1.2k");
+  });
+
+  it("does not show token info when both counts are zero", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      context_tokens: 0,
+      output_tokens: 0,
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const tokenInfo = container.querySelector(".token-info");
+    expect(tokenInfo).toBeNull();
+  });
+
+  it("shows token info with only context tokens", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      context_tokens: 8000,
+      output_tokens: 0,
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const tokenInfo = container.querySelector(".token-info");
+    expect(tokenInfo).toBeTruthy();
+    expect(tokenInfo!.textContent).toContain("ctx: 8k");
+    expect(tokenInfo!.textContent).not.toContain("out:");
+  });
+
+  it("shows token info with only output tokens", () => {
+    const msg = makeMessage({
+      role: "assistant",
+      context_tokens: 0,
+      output_tokens: 500,
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const tokenInfo = container.querySelector(".token-info");
+    expect(tokenInfo).toBeTruthy();
+    expect(tokenInfo!.textContent).not.toContain("ctx:");
+    expect(tokenInfo!.textContent).toContain("out: 500");
+  });
+
+  it("does not show token info on user messages", () => {
+    const msg = makeMessage({
+      role: "user",
+      context_tokens: 45000,
+      output_tokens: 1200,
+    });
+    const { container } = render(MessageContent, {
+      props: { message: msg },
+    });
+    const tokenInfo = container.querySelector(".token-info");
+    expect(tokenInfo).toBeNull();
   });
 });

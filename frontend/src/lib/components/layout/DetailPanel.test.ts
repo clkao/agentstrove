@@ -24,6 +24,9 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     parent_session_id: "",
     relationship_type: "",
     commit_count: 0,
+    display_name: "",
+    total_output_tokens: 0,
+    peak_context_tokens: 0,
     ...overrides,
   };
 }
@@ -181,5 +184,32 @@ describe("DetailPanel", () => {
     await fireEvent.click(shaLink.closest("button")!);
 
     expect(mockTargetOrdinal).toBe(3);
+  });
+
+  it("shows token usage badge with context and output counts", () => {
+    mockActiveSession = makeSession({
+      total_output_tokens: 12345,
+      peak_context_tokens: 45000,
+    });
+    mockActiveSessionId = "s1";
+
+    render(DetailPanel);
+
+    const badge = screen.getByText(/ctx:.*out:/);
+    expect(badge.textContent).toContain("ctx: 45k");
+    expect(badge.textContent).toContain("out: 12.3k");
+  });
+
+  it("does not show token usage badge when both values are 0", () => {
+    mockActiveSession = makeSession({
+      total_output_tokens: 0,
+      peak_context_tokens: 0,
+    });
+    mockActiveSessionId = "s1";
+
+    render(DetailPanel);
+
+    expect(screen.queryByText(/ctx:/)).toBeNull();
+    expect(screen.queryByText(/out:/)).toBeNull();
   });
 });

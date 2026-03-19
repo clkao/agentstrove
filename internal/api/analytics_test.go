@@ -1,5 +1,5 @@
 // ABOUTME: Integration tests for analytics API endpoints.
-// ABOUTME: Validates usage overview, activity heatmap, and tool distribution responses.
+// ABOUTME: Validates usage overview, activity heatmap, tool distribution, and tokens-by-model responses.
 package api
 
 import (
@@ -223,6 +223,84 @@ func TestAnalyticsTools_Empty(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var result []store.ToolUsageStat
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Empty(t, result)
+}
+
+func seedTokensByModelData(t *testing.T, s *store.ClickHouseStore) {
+	t.Helper()
+	ctx := t.Context()
+
+	sessions := []store.Session{
+		{
+			ID:               "token-sess-1",
+			UserID:           "alice@example.com",
+			UserName:         "Alice",
+			ProjectID:        "proj-frontend",
+			ProjectName:      "frontend",
+			ProjectPath:      "/home/alice/frontend",
+			Machine:          "laptop",
+			AgentType:        "claude-code",
+			FirstMessage:     "Build login",
+			MessageCount:     3,
+			UserMessageCount: 1,
+			StartedAt:        ptr(time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)),
+			EndedAt:          ptr(time.Date(2026, 3, 1, 11, 0, 0, 0, time.UTC)),
+			SourceCreatedAt:  "2026-03-01T10:00:00Z",
+		},
+	}
+
+	msgs := []store.Message{
+		{OrgID: "", SessionID: "token-sess-1", Ordinal: 0, Role: "user", Content: "Build login", Timestamp: ptr(time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)), ContentLength: 11},
+		{OrgID: "", SessionID: "token-sess-1", Ordinal: 1, Role: "assistant", Content: "Sure.", Timestamp: ptr(time.Date(2026, 3, 1, 10, 0, 1, 0, time.UTC)), ContentLength: 5, Model: "claude-sonnet-4-20250514", OutputTokens: 500, ContextTokens: 2000},
+		{OrgID: "", SessionID: "token-sess-1", Ordinal: 2, Role: "assistant", Content: "Done.", Timestamp: ptr(time.Date(2026, 3, 1, 10, 0, 2, 0, time.UTC)), ContentLength: 5, Model: "claude-opus-4-20250514", OutputTokens: 800, ContextTokens: 3000},
+	}
+
+	require.NoError(t, s.WriteSession(ctx, "", sessions[0], msgs, nil))
+}
+
+func TestAnalyticsTokensByModel(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedTokensByModelData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/analytics/tokens-by-model")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	var result []store.ModelTokenUsage
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	require.Len(t, result, 2)
+
+	// Results ordered by output_tokens DESC, so opus (800) before sonnet (500)
+	byModel := make(map[string]store.ModelTokenUsage)
+	for _, r := range result {
+		byModel[r.Model] = r
+	}
+
+	opus := byModel["claude-opus-4-20250514"]
+	assert.Equal(t, int64(800), opus.OutputTokens)
+	assert.Equal(t, int64(3000), opus.ContextTokens)
+	assert.Equal(t, int64(1), opus.MessageCount)
+
+	sonnet := byModel["claude-sonnet-4-20250514"]
+	assert.Equal(t, int64(500), sonnet.OutputTokens)
+	assert.Equal(t, int64(2000), sonnet.ContextTokens)
+	assert.Equal(t, int64(1), sonnet.MessageCount)
+}
+
+func TestAnalyticsTokensByModel_Empty(t *testing.T) {
+	ts, _ := setupTestAPI(t)
+
+	resp, err := http.Get(ts.URL + "/api/v1/analytics/tokens-by-model")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.ModelTokenUsage
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 	assert.Empty(t, result)
 }

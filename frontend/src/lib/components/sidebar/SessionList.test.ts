@@ -24,6 +24,9 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     parent_session_id: "",
     relationship_type: "",
     commit_count: 0,
+    display_name: "",
+    total_output_tokens: 0,
+    peak_context_tokens: 0,
     ...overrides,
   };
 }
@@ -125,6 +128,27 @@ describe("SessionList", () => {
     expect(screen.getByText("Load more")).toBeTruthy();
   });
 
+  it("shows display_name instead of first_message when set", () => {
+    sessions.sessions = [
+      makeSession({ id: "s1", display_name: "My Custom Name", first_message: "First task" }),
+    ];
+
+    render(SessionList);
+
+    expect(screen.getByText("My Custom Name")).toBeTruthy();
+    expect(screen.queryByText("First task")).toBeNull();
+  });
+
+  it("falls back to session id when both display_name and first_message are empty", () => {
+    sessions.sessions = [
+      makeSession({ id: "sess-abc-123", display_name: "", first_message: null }),
+    ];
+
+    render(SessionList);
+
+    expect(screen.getByText("sess-abc-123")).toBeTruthy();
+  });
+
   it("hides load more button when nextCursor is empty", () => {
     sessions.sessions = [makeSession()];
     sessions.nextCursor = "";
@@ -132,5 +156,21 @@ describe("SessionList", () => {
     render(SessionList);
 
     expect(screen.queryByText("Load more")).toBeNull();
+  });
+
+  it("shows token badge when total_output_tokens > 0", () => {
+    sessions.sessions = [makeSession({ id: "s1", total_output_tokens: 12345 })];
+
+    render(SessionList);
+
+    expect(screen.getByText("12.3k tok")).toBeTruthy();
+  });
+
+  it("does not show token badge when total_output_tokens is 0", () => {
+    sessions.sessions = [makeSession({ id: "s1", total_output_tokens: 0 })];
+
+    render(SessionList);
+
+    expect(screen.queryByText(/tok$/)).toBeNull();
   });
 });

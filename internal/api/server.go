@@ -33,6 +33,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/sessions/{id}/gitlinks", s.handleGetSessionGitLinks)
+	s.mux.HandleFunc("GET /api/v1/sessions/{id}/stars", s.handleGetSessionStars)
+	s.mux.HandleFunc("GET /api/v1/sessions/{id}/pins", s.handleGetSessionPins)
 	s.mux.HandleFunc("GET /api/v1/sessions/{id}/messages", s.handleGetMessages)
 	s.mux.HandleFunc("GET /api/v1/sessions/{id}", s.handleGetSession)
 	s.mux.HandleFunc("GET /api/v1/sessions", s.handleListSessions)
@@ -45,6 +47,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/analytics/heatmap", s.handleActivityHeatmap)
 	s.mux.HandleFunc("GET /api/v1/analytics/tools", s.handleToolUsage)
 	s.mux.HandleFunc("GET /api/v1/analytics/daily", s.handleDailyActivity)
+	s.mux.HandleFunc("GET /api/v1/analytics/tokens-by-model", s.handleTokensByModel)
+	s.mux.HandleFunc("GET /api/v1/session-deletes", s.handleListSessionDeletes)
 
 	distSub, _ := fs.Sub(web.DistFS, "dist")
 	fileServer := http.FileServerFS(distSub)

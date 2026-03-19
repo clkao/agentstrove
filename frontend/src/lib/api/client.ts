@@ -1,4 +1,4 @@
-// ABOUTME: Typed fetch wrappers for all 6 API endpoints.
+// ABOUTME: Typed fetch wrappers for all API endpoints.
 // ABOUTME: Uses relative paths so the Vite dev proxy and production embed both work.
 
 import type {
@@ -15,6 +15,10 @@ import type {
   HeatmapCell,
   ToolUsageStat,
   DailyActivity,
+  ModelTokenUsage,
+  SessionStar,
+  MessagePin,
+  SessionDelete,
 } from "./types.js";
 
 class ApiError extends Error {
@@ -142,4 +146,29 @@ export function fetchDailyActivity(dateFrom?: string, dateTo?: string, projectNa
   if (projectName) params.set("project_name", projectName);
   const qs = params.toString();
   return fetchJSON<DailyActivity[]>(`/api/v1/analytics/daily${qs ? `?${qs}` : ""}`);
+}
+
+export function fetchTokensByModel(dateFrom?: string, dateTo?: string, projectName?: string): Promise<ModelTokenUsage[]> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  if (projectName) params.set("project_name", projectName);
+  const qs = params.toString();
+  return fetchJSON<ModelTokenUsage[]>(`/api/v1/analytics/tokens-by-model${qs ? `?${qs}` : ""}`);
+}
+
+export function getSessionStars(sessionId: string): Promise<SessionStar[]> {
+  return fetchJSON<SessionStar[]>(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/stars`,
+  );
+}
+
+export function getSessionPins(sessionId: string): Promise<MessagePin[]> {
+  return fetchJSON<MessagePin[]>(
+    `/api/v1/sessions/${encodeURIComponent(sessionId)}/pins`,
+  );
+}
+
+export function listSessionDeletes(): Promise<SessionDelete[]> {
+  return fetchJSON<SessionDelete[]>("/api/v1/session-deletes");
 }

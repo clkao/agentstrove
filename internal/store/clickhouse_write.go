@@ -36,6 +36,9 @@ func (s *ClickHouseStore) WriteSession(ctx context.Context, orgID string, sessio
 		session.RelationshipType,
 		session.Machine,
 		session.SourceCreatedAt,
+		session.DisplayName,
+		uint32(session.TotalOutputTokens),
+		uint32(session.PeakContextTokens),
 		version,
 	); err != nil {
 		return fmt.Errorf("append session: %w", err)
@@ -61,6 +64,10 @@ func (s *ClickHouseStore) WriteSession(ctx context.Context, orgID string, sessio
 				m.HasThinking,
 				m.HasToolUse,
 				uint32(m.ContentLength),
+				m.Model,
+				m.TokenUsage,
+				uint32(m.ContextTokens),
+				uint32(m.OutputTokens),
 				version,
 			); err != nil {
 				return fmt.Errorf("append message ordinal %d: %w", m.Ordinal, err)
@@ -140,6 +147,9 @@ func (s *ClickHouseStore) WriteBatch(ctx context.Context, orgID string, sessions
 			session.RelationshipType,
 			session.Machine,
 			session.SourceCreatedAt,
+			session.DisplayName,
+			uint32(session.TotalOutputTokens),
+			uint32(session.PeakContextTokens),
 			version,
 		); err != nil {
 			return fmt.Errorf("append session %s: %w", session.ID, err)
@@ -166,6 +176,10 @@ func (s *ClickHouseStore) WriteBatch(ctx context.Context, orgID string, sessions
 				m.HasThinking,
 				m.HasToolUse,
 				uint32(m.ContentLength),
+				m.Model,
+				m.TokenUsage,
+				uint32(m.ContextTokens),
+				uint32(m.OutputTokens),
 				version,
 			); err != nil {
 				return fmt.Errorf("append message: %w", err)
@@ -211,6 +225,60 @@ func (s *ClickHouseStore) WriteBatch(ctx context.Context, orgID string, sessions
 	}
 
 	return nil
+}
+
+// WriteSessionStars inserts session star records into the session_stars table.
+func (s *ClickHouseStore) WriteSessionStars(ctx context.Context, orgID string, stars []SessionStar) error {
+	if len(stars) == 0 {
+		return nil
+	}
+	version := uint64(time.Now().UnixMilli())
+	batch, err := s.conn.PrepareBatch(ctx, "INSERT INTO session_stars")
+	if err != nil {
+		return fmt.Errorf("prepare session_stars batch: %w", err)
+	}
+	for _, star := range stars {
+		if err := batch.Append(orgID, star.SessionID, star.UserID, star.CreatedAt, version); err != nil {
+			return fmt.Errorf("append session_star: %w", err)
+		}
+	}
+	return batch.Send()
+}
+
+// WriteMessagePins inserts message pin records into the message_pins table.
+func (s *ClickHouseStore) WriteMessagePins(ctx context.Context, orgID string, pins []MessagePin) error {
+	if len(pins) == 0 {
+		return nil
+	}
+	version := uint64(time.Now().UnixMilli())
+	batch, err := s.conn.PrepareBatch(ctx, "INSERT INTO message_pins")
+	if err != nil {
+		return fmt.Errorf("prepare message_pins batch: %w", err)
+	}
+	for _, pin := range pins {
+		if err := batch.Append(orgID, pin.SessionID, uint32(pin.MessageOrdinal), pin.UserID, pin.Note, pin.CreatedAt, version); err != nil {
+			return fmt.Errorf("append message_pin: %w", err)
+		}
+	}
+	return batch.Send()
+}
+
+// WriteSessionDeletes inserts session delete records into the session_deletes table.
+func (s *ClickHouseStore) WriteSessionDeletes(ctx context.Context, orgID string, deletes []SessionDelete) error {
+	if len(deletes) == 0 {
+		return nil
+	}
+	version := uint64(time.Now().UnixMilli())
+	batch, err := s.conn.PrepareBatch(ctx, "INSERT INTO session_deletes")
+	if err != nil {
+		return fmt.Errorf("prepare session_deletes batch: %w", err)
+	}
+	for _, del := range deletes {
+		if err := batch.Append(orgID, del.SessionID, del.UserID, del.CreatedAt, version); err != nil {
+			return fmt.Errorf("append session_delete: %w", err)
+		}
+	}
+	return batch.Send()
 }
 
 // WriteGitLinks inserts git link records into the git_links table.

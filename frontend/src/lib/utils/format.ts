@@ -1,5 +1,5 @@
-// ABOUTME: Time formatting and text truncation helpers for display.
-// ABOUTME: Provides relative time, timestamp formatting, and string utilities.
+// ABOUTME: Display formatting helpers for time, text, tokens, and model names.
+// ABOUTME: Provides relative time, timestamp, token count, model name, and string utilities.
 
 const MINUTE = 60;
 const HOUR = 3600;
@@ -57,4 +57,25 @@ export function formatAgentName(
 /** Formats a number with commas */
 export function formatNumber(n: number): string {
   return n.toLocaleString();
+}
+
+/** Formats a token count as a compact string (e.g. 1234 → "1.2k", 1500000 → "1.5M") */
+export function formatTokenCount(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) {
+    const k = n / 1000;
+    return k % 1 === 0 ? `${k}k` : `${parseFloat(k.toFixed(1))}k`;
+  }
+  const m = n / 1_000_000;
+  return m % 1 === 0 ? `${m}M` : `${parseFloat(m.toFixed(1))}M`;
+}
+
+/** Strips "claude-" prefix and trailing date suffix from model identifiers */
+export function formatModelName(model: string): string {
+  if (!model) return '';
+  if (!model.startsWith('claude-')) return model;
+  let name = model.slice('claude-'.length);
+  // Strip trailing date suffix (8+ digit number like 20250514)
+  name = name.replace(/-\d{8,}$/, '');
+  return name;
 }

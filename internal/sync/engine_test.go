@@ -18,6 +18,9 @@ type fakeStore struct {
 	messages       []store.Message
 	toolCalls      []store.ToolCall
 	gitLinks       []store.GitLink
+	stars          []store.SessionStar
+	pins           []store.MessagePin
+	deletes        []store.SessionDelete
 	batchCallCount int
 	writeCallCount int
 }
@@ -42,6 +45,21 @@ func (f *fakeStore) WriteBatch(_ context.Context, _ string, sessions []store.Ses
 
 func (f *fakeStore) WriteGitLinks(_ context.Context, _ string, links []store.GitLink) error {
 	f.gitLinks = append(f.gitLinks, links...)
+	return nil
+}
+
+func (f *fakeStore) WriteSessionStars(_ context.Context, _ string, stars []store.SessionStar) error {
+	f.stars = append(f.stars, stars...)
+	return nil
+}
+
+func (f *fakeStore) WriteMessagePins(_ context.Context, _ string, pins []store.MessagePin) error {
+	f.pins = append(f.pins, pins...)
+	return nil
+}
+
+func (f *fakeStore) WriteSessionDeletes(_ context.Context, _ string, deletes []store.SessionDelete) error {
+	f.deletes = append(f.deletes, deletes...)
 	return nil
 }
 
@@ -88,6 +106,31 @@ func TestParseTimestamp(t *testing.T) {
 
 	t.Run("unparseable returns nil", func(t *testing.T) {
 		assert.Nil(t, parseTimestamp("not-a-date"))
+	})
+}
+
+func TestParseTimestampOrNow(t *testing.T) {
+	t.Run("valid timestamp returns parsed time", func(t *testing.T) {
+		ts := parseTimestampOrNow("2024-06-15T12:00:00Z")
+		assert.Equal(t, 2024, ts.Year())
+		assert.Equal(t, time.June, ts.Month())
+		assert.Equal(t, 15, ts.Day())
+	})
+
+	t.Run("empty string returns current time", func(t *testing.T) {
+		before := time.Now().UTC().Add(-time.Second)
+		ts := parseTimestampOrNow("")
+		after := time.Now().UTC().Add(time.Second)
+		assert.True(t, ts.After(before), "should be after before")
+		assert.True(t, ts.Before(after), "should be before after")
+	})
+
+	t.Run("unparseable string returns current time", func(t *testing.T) {
+		before := time.Now().UTC().Add(-time.Second)
+		ts := parseTimestampOrNow("not-a-date")
+		after := time.Now().UTC().Add(time.Second)
+		assert.True(t, ts.After(before), "should be after before")
+		assert.True(t, ts.Before(after), "should be before after")
 	})
 }
 

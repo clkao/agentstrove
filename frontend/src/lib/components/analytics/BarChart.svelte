@@ -13,7 +13,7 @@
     total: number;
   }
 
-  let { data = [], maxValue = 0 }: { data: Bar[]; maxValue?: number } = $props();
+  let { data = [], maxValue = 0, formatValue = (n: number) => String(n) }: { data: Bar[]; maxValue?: number; formatValue?: (n: number) => string } = $props();
 
   const barHeight = 28;
   const labelWidth = 120;
@@ -62,7 +62,7 @@
           font-size="11"
           fill="var(--text-muted)"
         >
-          {bar.total}
+          {formatValue(bar.total)}
         </text>
       {/each}
     </svg>

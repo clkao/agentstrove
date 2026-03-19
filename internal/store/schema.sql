@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     relationship_type   String DEFAULT '',
     machine             String DEFAULT '',
     source_created_at   String DEFAULT '',
+    display_name        String DEFAULT '',
+    total_output_tokens UInt32 DEFAULT 0,
+    peak_context_tokens UInt32 DEFAULT 0,
     _version            UInt64 DEFAULT toUnixTimestamp64Milli(now64(3))
 ) ENGINE = ReplacingMergeTree(_version)
 PARTITION BY org_id
@@ -34,6 +37,10 @@ CREATE TABLE IF NOT EXISTS messages (
     has_thinking    Bool DEFAULT false,
     has_tool_use    Bool DEFAULT false,
     content_length  UInt32 DEFAULT 0,
+    model           String DEFAULT '',
+    token_usage     String DEFAULT '',
+    context_tokens  UInt32 DEFAULT 0,
+    output_tokens   UInt32 DEFAULT 0,
     _version        UInt64 DEFAULT toUnixTimestamp64Milli(now64(3))
 ) ENGINE = ReplacingMergeTree(_version)
 PARTITION BY org_id
@@ -70,3 +77,35 @@ CREATE TABLE IF NOT EXISTS git_links (
 ) ENGINE = ReplacingMergeTree(_version)
 PARTITION BY org_id
 ORDER BY (org_id, session_id, commit_sha, pr_url);
+
+CREATE TABLE IF NOT EXISTS session_stars (
+    org_id      String DEFAULT '',
+    session_id  String,
+    user_id     String DEFAULT '',
+    created_at  DateTime64(3) DEFAULT now64(3),
+    _version    UInt64 DEFAULT toUnixTimestamp64Milli(now64(3))
+) ENGINE = ReplacingMergeTree(_version)
+PARTITION BY org_id
+ORDER BY (org_id, session_id, user_id);
+
+CREATE TABLE IF NOT EXISTS message_pins (
+    org_id          String DEFAULT '',
+    session_id      String,
+    message_ordinal UInt32,
+    user_id         String DEFAULT '',
+    note            String DEFAULT '',
+    created_at      DateTime64(3) DEFAULT now64(3),
+    _version        UInt64 DEFAULT toUnixTimestamp64Milli(now64(3))
+) ENGINE = ReplacingMergeTree(_version)
+PARTITION BY org_id
+ORDER BY (org_id, session_id, message_ordinal, user_id);
+
+CREATE TABLE IF NOT EXISTS session_deletes (
+    org_id      String DEFAULT '',
+    session_id  String,
+    user_id     String DEFAULT '',
+    created_at  DateTime64(3) DEFAULT now64(3),
+    _version    UInt64 DEFAULT toUnixTimestamp64Milli(now64(3))
+) ENGINE = ReplacingMergeTree(_version)
+PARTITION BY org_id
+ORDER BY (org_id, session_id, user_id);

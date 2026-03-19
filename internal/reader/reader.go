@@ -12,19 +12,22 @@ import (
 
 // Session represents an agentsview session record.
 type Session struct {
-	ID               string
-	Project          string
-	Machine          string
-	Agent            string
-	FirstMessage     string
-	StartedAt        string
-	EndedAt          string
-	MessageCount     int
-	UserMessageCount int
-	FileHash         string
-	ParentSessionID  string
-	RelationshipType string
-	CreatedAt        string
+	ID                string
+	Project           string
+	Machine           string
+	Agent             string
+	FirstMessage      string
+	StartedAt         string
+	EndedAt           string
+	MessageCount      int
+	UserMessageCount  int
+	FileHash          string
+	ParentSessionID   string
+	RelationshipType  string
+	CreatedAt         string
+	DisplayName       string
+	TotalOutputTokens int
+	PeakContextTokens int
 }
 
 // Message represents an agentsview message record.
@@ -37,6 +40,10 @@ type Message struct {
 	HasThinking   bool
 	HasToolUse    bool
 	ContentLength int
+	Model         string
+	TokenUsage    string
+	ContextTokens int
+	OutputTokens  int
 }
 
 // ToolCall represents an agentsview tool call record.
@@ -53,9 +60,22 @@ type ToolCall struct {
 	SubagentSessionID   string
 }
 
+// PinnedMessage represents a pinned message from the agentsview database.
+type PinnedMessage struct {
+	SessionID      string
+	MessageOrdinal int
+	Note           string
+	CreatedAt      string
+}
+
 // Reader provides read-only access to an agentsview SQLite database.
 type Reader struct {
-	db *sql.DB
+	db                    *sql.DB
+	hasSessionTokenFields bool
+	hasMessageTokenFields bool
+	hasStarredTable       bool
+	hasPinnedTable        bool
+	hasDeletedAt          bool
 }
 
 // NewReader opens the agentsview SQLite database in read-only mode.
@@ -76,7 +96,43 @@ func NewReader(dbPath string) (*Reader, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	return &Reader{db: db}, nil
+	r := &Reader{db: db}
+	r.hasSessionTokenFields = tableHasColumn(db, "sessions", "total_output_tokens")
+	r.hasMessageTokenFields = tableHasColumn(db, "messages", "model")
+	r.hasStarredTable = tableExists(db, "starred_sessions")
+	r.hasPinnedTable = tableExists(db, "pinned_messages")
+	r.hasDeletedAt = tableHasColumn(db, "sessions", "deleted_at")
+
+	return r, nil
+}
+
+// tableHasColumn checks whether a SQLite table contains the named column.
+func tableHasColumn(db *sql.DB, table, column string) bool {
+	rows, err := db.Query(fmt.Sprintf("SELECT name FROM pragma_table_info('%s')", table))
+	if err != nil {
+		return false
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
+}
+
+// tableExists checks whether a SQLite database contains the named table.
+func tableExists(db *sql.DB, table string) bool {
+	var name string
+	err := db.QueryRow(
+		"SELECT name FROM sqlite_master WHERE type='table' AND name=?", table,
+	).Scan(&name)
+	return err == nil
 }
 
 // ReadSessionsSince returns sessions with created_at > createdAfter, ordered by created_at ASC.
@@ -88,8 +144,14 @@ func (r *Reader) ReadSessionsSince(createdAfter string) ([]Session, error) {
 	query := `SELECT id, project, machine, agent,
 		COALESCE(first_message, ''), COALESCE(started_at, ''), COALESCE(ended_at, ''),
 		message_count, user_message_count, COALESCE(file_hash, ''),
-		COALESCE(parent_session_id, ''), relationship_type, created_at
-		FROM sessions`
+		COALESCE(parent_session_id, ''), relationship_type, created_at`
+
+	if r.hasSessionTokenFields {
+		query += `,
+		COALESCE(display_name, ''), COALESCE(total_output_tokens, 0), COALESCE(peak_context_tokens, 0)`
+	}
+
+	query += ` FROM sessions`
 
 	if createdAfter == "" {
 		query += " ORDER BY created_at ASC"
@@ -107,12 +169,16 @@ func (r *Reader) ReadSessionsSince(createdAfter string) ([]Session, error) {
 	var sessions []Session
 	for rows.Next() {
 		var s Session
-		if err := rows.Scan(
+		scanArgs := []any{
 			&s.ID, &s.Project, &s.Machine, &s.Agent,
 			&s.FirstMessage, &s.StartedAt, &s.EndedAt,
 			&s.MessageCount, &s.UserMessageCount, &s.FileHash,
 			&s.ParentSessionID, &s.RelationshipType, &s.CreatedAt,
-		); err != nil {
+		}
+		if r.hasSessionTokenFields {
+			scanArgs = append(scanArgs, &s.DisplayName, &s.TotalOutputTokens, &s.PeakContextTokens)
+		}
+		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
 		}
 		sessions = append(sessions, s)
@@ -123,11 +189,20 @@ func (r *Reader) ReadSessionsSince(createdAfter string) ([]Session, error) {
 
 // ReadMessagesForSession returns messages for a session ordered by ordinal ASC.
 func (r *Reader) ReadMessagesForSession(sessionID string) ([]Message, error) {
-	rows, err := r.db.Query(`SELECT session_id, ordinal, role, content,
-		COALESCE(timestamp, ''), has_thinking, has_tool_use, content_length
+	query := `SELECT session_id, ordinal, role, content,
+		COALESCE(timestamp, ''), has_thinking, has_tool_use, content_length`
+
+	if r.hasMessageTokenFields {
+		query += `,
+		COALESCE(model, ''), COALESCE(token_usage, ''), COALESCE(context_tokens, 0), COALESCE(output_tokens, 0)`
+	}
+
+	query += `
 		FROM messages
 		WHERE session_id = ?
-		ORDER BY ordinal ASC`, sessionID)
+		ORDER BY ordinal ASC`
+
+	rows, err := r.db.Query(query, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
@@ -137,10 +212,14 @@ func (r *Reader) ReadMessagesForSession(sessionID string) ([]Message, error) {
 	for rows.Next() {
 		var m Message
 		var hasThinking, hasToolUse int
-		if err := rows.Scan(
+		scanArgs := []any{
 			&m.SessionID, &m.Ordinal, &m.Role, &m.Content,
 			&m.Timestamp, &hasThinking, &hasToolUse, &m.ContentLength,
-		); err != nil {
+		}
+		if r.hasMessageTokenFields {
+			scanArgs = append(scanArgs, &m.Model, &m.TokenUsage, &m.ContextTokens, &m.OutputTokens)
+		}
+		if err := rows.Scan(scanArgs...); err != nil {
 			return nil, fmt.Errorf("scan message: %w", err)
 		}
 		m.HasThinking = hasThinking != 0
@@ -181,6 +260,91 @@ func (r *Reader) ReadToolCallsForSession(sessionID string) ([]ToolCall, error) {
 	}
 
 	return toolCalls, rows.Err()
+}
+
+// ReadStarredSessionIDs returns session IDs from the starred_sessions table.
+// Returns an empty slice if the table doesn't exist.
+func (r *Reader) ReadStarredSessionIDs() ([]string, error) {
+	if !r.hasStarredTable {
+		return []string{}, nil
+	}
+
+	rows, err := r.db.Query(`SELECT session_id FROM starred_sessions`)
+	if err != nil {
+		return nil, fmt.Errorf("query starred sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan starred session: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if ids == nil {
+		return []string{}, rows.Err()
+	}
+	return ids, rows.Err()
+}
+
+// ReadPinnedMessages returns all pinned messages from the pinned_messages table.
+// Returns an empty slice if the table doesn't exist.
+func (r *Reader) ReadPinnedMessages() ([]PinnedMessage, error) {
+	if !r.hasPinnedTable {
+		return []PinnedMessage{}, nil
+	}
+
+	rows, err := r.db.Query(`SELECT session_id, ordinal, COALESCE(note, ''), created_at
+		FROM pinned_messages`)
+	if err != nil {
+		return nil, fmt.Errorf("query pinned messages: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var pins []PinnedMessage
+	for rows.Next() {
+		var p PinnedMessage
+		if err := rows.Scan(&p.SessionID, &p.MessageOrdinal, &p.Note, &p.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan pinned message: %w", err)
+		}
+		pins = append(pins, p)
+	}
+
+	if pins == nil {
+		return []PinnedMessage{}, rows.Err()
+	}
+	return pins, rows.Err()
+}
+
+// ReadDeletedSessionIDs returns session IDs where deleted_at IS NOT NULL.
+// Returns an empty slice if the deleted_at column doesn't exist.
+func (r *Reader) ReadDeletedSessionIDs() ([]string, error) {
+	if !r.hasDeletedAt {
+		return []string{}, nil
+	}
+
+	rows, err := r.db.Query(`SELECT id FROM sessions WHERE deleted_at IS NOT NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("query deleted sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan deleted session: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if ids == nil {
+		return []string{}, rows.Err()
+	}
+	return ids, rows.Err()
 }
 
 // Close closes the database connection.
