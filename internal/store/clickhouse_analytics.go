@@ -304,12 +304,7 @@ func (s *ClickHouseStore) TokenUsageByModel(ctx context.Context, orgID string, p
 
 	results := make([]ModelTokenUsage, 0, len(rows))
 	for _, r := range rows {
-		results = append(results, ModelTokenUsage{
-			Model:         r.Model,
-			OutputTokens:  r.OutputTokens,
-			ContextTokens: r.ContextTokens,
-			MessageCount:  r.MessageCount,
-		})
+		results = append(results, ModelTokenUsage(r))
 	}
 	return results, nil
 }
