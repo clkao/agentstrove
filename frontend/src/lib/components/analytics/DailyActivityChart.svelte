@@ -1,7 +1,8 @@
-<!-- ABOUTME: Vertical bar chart showing daily session counts over time. -->
-<!-- ABOUTME: SVG bars with hover tooltips, sparse date labels, responsive width. -->
+<!-- ABOUTME: Vertical bar chart showing daily session and token counts over time. -->
+<!-- ABOUTME: SVG bars with hover tooltips, token overlay line, sparse date labels, responsive width. -->
 <script lang="ts">
   import { analytics } from "../../stores/analytics.svelte.js";
+  import { formatTokenCount } from "../../utils/format.js";
 
   let containerWidth = $state(400);
 
@@ -14,6 +15,9 @@
   const chartWidth = $derived(Math.max(containerWidth - padding.left - padding.right, 100));
   const barWidth = $derived(data.length > 0 ? Math.max(chartWidth / data.length - 1, 2) : 0);
   const barGap = $derived(data.length > 0 ? Math.max((chartWidth - barWidth * data.length) / data.length, 1) : 0);
+
+  const hasTokens = $derived(data.some(d => d.total_output_tokens > 0));
+  const maxTokens = $derived(Math.max(...data.map(d => d.total_output_tokens), 1));
 
   // Show roughly 6-8 date labels, spaced evenly
   const labelStep = $derived(Math.max(1, Math.ceil(data.length / 7)));
@@ -56,9 +60,24 @@
             opacity="0.8"
             rx="1"
           >
-            <title>{day.date}: {day.session_count} sessions, {day.message_count} messages</title>
+            <title>{day.date}: {day.session_count} sessions, {day.message_count} messages{day.total_output_tokens > 0 ? `, ${formatTokenCount(day.total_output_tokens)} tokens` : ''}</title>
           </rect>
         {/each}
+
+        <!-- Token usage line overlay -->
+        {#if hasTokens}
+          <polyline
+            points={data.map((day, i) => {
+              const x = padding.left + i * (barWidth + barGap) + barWidth / 2;
+              const y = padding.top + chartHeight - (day.total_output_tokens / maxTokens) * chartHeight;
+              return `${x},${y}`;
+            }).join(' ')}
+            fill="none"
+            stroke="var(--accent-purple)"
+            stroke-width="1.5"
+            opacity="0.7"
+          />
+        {/if}
 
         <!-- X-axis date labels -->
         {#each data as day, i}

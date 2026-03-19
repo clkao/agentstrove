@@ -21,6 +21,10 @@ type MessageWithToolCalls struct {
 	HasThinking   bool             `json:"has_thinking"`
 	HasToolUse    bool             `json:"has_tool_use"`
 	ContentLength int              `json:"content_length"`
+	Model         string           `json:"model"`
+	TokenUsage    string           `json:"token_usage,omitempty"`
+	ContextTokens int              `json:"context_tokens"`
+	OutputTokens  int              `json:"output_tokens"`
 	ToolCalls     []store.ToolCall `json:"tool_calls"`
 }
 
@@ -123,6 +127,10 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 			HasThinking:   m.HasThinking,
 			HasToolUse:    m.HasToolUse,
 			ContentLength: m.ContentLength,
+			Model:         m.Model,
+			TokenUsage:    m.TokenUsage,
+			ContextTokens: m.ContextTokens,
+			OutputTokens:  m.OutputTokens,
 			ToolCalls:     tcByOrdinal[m.Ordinal],
 		}
 		if result[i].ToolCalls == nil {

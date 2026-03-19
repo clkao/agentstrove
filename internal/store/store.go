@@ -31,8 +31,11 @@ type Session struct {
 	UserMessageCount int        `json:"user_message_count"`
 	ParentSessionID  string     `json:"parent_session_id"`
 	RelationshipType string     `json:"relationship_type"`
-	SourceCreatedAt  string     `json:"source_created_at"`
-	CommitCount      int        `json:"commit_count"`
+	SourceCreatedAt   string     `json:"source_created_at"`
+	DisplayName       string     `json:"display_name"`
+	TotalOutputTokens int        `json:"total_output_tokens"`
+	PeakContextTokens int        `json:"peak_context_tokens"`
+	CommitCount       int        `json:"commit_count"`
 }
 
 type Message struct {
@@ -45,6 +48,10 @@ type Message struct {
 	HasThinking   bool       `json:"has_thinking"`
 	HasToolUse    bool       `json:"has_tool_use"`
 	ContentLength int        `json:"content_length"`
+	Model         string     `json:"model"`
+	TokenUsage    string     `json:"token_usage,omitempty"`
+	ContextTokens int        `json:"context_tokens"`
+	OutputTokens  int        `json:"output_tokens"`
 }
 
 type ToolCall struct {
@@ -86,6 +93,29 @@ type GitLinkResult struct {
 	LinkType       string     `json:"link_type"`
 	Confidence     string     `json:"confidence"`
 	MessageOrdinal int        `json:"message_ordinal"`
+}
+
+type SessionStar struct {
+	OrgID     string    `json:"org_id"`
+	SessionID string    `json:"session_id"`
+	UserID    string    `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type MessagePin struct {
+	OrgID          string    `json:"org_id"`
+	SessionID      string    `json:"session_id"`
+	MessageOrdinal int       `json:"message_ordinal"`
+	UserID         string    `json:"user_id"`
+	Note           string    `json:"note"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type SessionDelete struct {
+	OrgID     string    `json:"org_id"`
+	SessionID string    `json:"session_id"`
+	UserID    string    `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type SessionFilter struct {
@@ -153,13 +183,15 @@ type SearchPage struct {
 }
 
 type UserUsage struct {
-	UserID       string `json:"user_id"`
-	UserName     string `json:"user_name"`
-	AgentType    string `json:"agent_type"`
-	ProjectName  string `json:"project_name"`
-	SessionCount int    `json:"session_count"`
-	MessageCount int    `json:"message_count"`
-	CommitCount  int    `json:"commit_count"`
+	UserID            string `json:"user_id"`
+	UserName          string `json:"user_name"`
+	AgentType         string `json:"agent_type"`
+	ProjectName       string `json:"project_name"`
+	SessionCount      int    `json:"session_count"`
+	MessageCount      int    `json:"message_count"`
+	CommitCount       int    `json:"commit_count"`
+	TotalOutputTokens int64 `json:"total_output_tokens"`
+	PeakContextTokens int   `json:"peak_context_tokens"`
 }
 
 type HeatmapCell struct {
@@ -175,9 +207,17 @@ type ToolUsageStat struct {
 }
 
 type DailyActivity struct {
-	Date         string `json:"date"`
-	SessionCount int    `json:"session_count"`
-	MessageCount int    `json:"message_count"`
+	Date              string `json:"date"`
+	SessionCount      int    `json:"session_count"`
+	MessageCount      int    `json:"message_count"`
+	TotalOutputTokens int64 `json:"total_output_tokens"`
+}
+
+type ModelTokenUsage struct {
+	Model         string `json:"model"`
+	OutputTokens  int64  `json:"output_tokens"`
+	ContextTokens int64  `json:"context_tokens"`
+	MessageCount  int64  `json:"message_count"`
 }
 
 // Store handles write operations for agent session data.
@@ -186,6 +226,9 @@ type Store interface {
 	WriteSession(ctx context.Context, orgID string, session Session, messages []Message, toolCalls []ToolCall) error
 	WriteBatch(ctx context.Context, orgID string, sessions []Session, messages []Message, toolCalls []ToolCall) error
 	WriteGitLinks(ctx context.Context, orgID string, links []GitLink) error
+	WriteSessionStars(ctx context.Context, orgID string, stars []SessionStar) error
+	WriteMessagePins(ctx context.Context, orgID string, pins []MessagePin) error
+	WriteSessionDeletes(ctx context.Context, orgID string, deletes []SessionDelete) error
 	Close() error
 }
 
@@ -205,5 +248,9 @@ type ReadStore interface {
 	ActivityHeatmap(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]HeatmapCell, error)
 	ToolUsageDistribution(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]ToolUsageStat, error)
 	DailyActivity(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]DailyActivity, error)
+	TokenUsageByModel(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]ModelTokenUsage, error)
+	ListSessionStars(ctx context.Context, orgID string, sessionID string) ([]SessionStar, error)
+	ListMessagePins(ctx context.Context, orgID string, sessionID string) ([]MessagePin, error)
+	ListSessionDeletes(ctx context.Context, orgID string) ([]SessionDelete, error)
 	Close() error
 }

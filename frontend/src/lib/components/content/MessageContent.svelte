@@ -6,7 +6,7 @@
     parseContent,
     enrichSegments,
   } from "../../utils/content-parser.js";
-  import { formatTimestamp } from "../../utils/format.js";
+  import { formatTimestamp, formatModelName, formatTokenCount } from "../../utils/format.js";
   import ThinkingBlock from "./ThinkingBlock.svelte";
   import ToolBlock from "./ToolBlock.svelte";
   import CodeBlock from "./CodeBlock.svelte";
@@ -38,6 +38,13 @@
   let roleBg = $derived(
     isUser ? "var(--user-bg)" : "var(--assistant-bg)",
   );
+
+  let showModel = $derived(!isUser && !!message.model);
+  let modelLabel = $derived(showModel ? formatModelName(message.model) : "");
+
+  let hasTokens = $derived(
+    !isUser && (message.context_tokens > 0 || message.output_tokens > 0),
+  );
 </script>
 
 <div
@@ -60,6 +67,14 @@
     >
       {isUser ? (developerName ?? "User") : (agentName ?? "Assistant")}
     </span>
+    {#if showModel}
+      <span class="model-badge">{modelLabel}</span>
+    {/if}
+    {#if hasTokens}
+      <span class="token-info">
+        {#if message.context_tokens > 0}ctx: {formatTokenCount(message.context_tokens)}{/if}{#if message.context_tokens > 0 && message.output_tokens > 0} · {/if}{#if message.output_tokens > 0}out: {formatTokenCount(message.output_tokens)}{/if}
+      </span>
+    {/if}
     <span class="timestamp">
       {formatTimestamp(message.timestamp)}
     </span>
@@ -128,6 +143,19 @@
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.01em;
+  }
+
+  .model-badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--bg-inset);
+    color: var(--text-secondary);
+  }
+
+  .token-info {
+    font-size: 10px;
+    color: var(--text-muted);
   }
 
   .timestamp {

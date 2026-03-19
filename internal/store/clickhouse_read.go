@@ -28,6 +28,9 @@ type sessionRow struct {
 	ParentSessionID  string     `ch:"parent_session_id"`
 	RelationshipType string     `ch:"relationship_type"`
 	SourceCreatedAt  string     `ch:"source_created_at"`
+	DisplayName      string     `ch:"display_name"`
+	TotalOutputTokens uint32    `ch:"total_output_tokens"`
+	PeakContextTokens uint32    `ch:"peak_context_tokens"`
 	CommitCount      uint64     `ch:"commit_count"`
 }
 
@@ -49,8 +52,11 @@ func sessionRowToSession(r sessionRow) Session {
 		UserMessageCount: int(r.UserMessageCount),
 		ParentSessionID:  r.ParentSessionID,
 		RelationshipType: r.RelationshipType,
-		SourceCreatedAt:  r.SourceCreatedAt,
-		CommitCount:      int(r.CommitCount),
+		SourceCreatedAt:   r.SourceCreatedAt,
+		DisplayName:       r.DisplayName,
+		TotalOutputTokens: int(r.TotalOutputTokens),
+		PeakContextTokens: int(r.PeakContextTokens),
+		CommitCount:       int(r.CommitCount),
 	}
 }
 
@@ -61,6 +67,7 @@ const sessionSelectCols = `s.org_id, s.id, s.user_id, s.user_name,
 	s.agent_type, s.first_message, s.started_at, s.ended_at,
 	s.message_count, s.user_message_count,
 	s.parent_session_id, s.relationship_type, s.source_created_at,
+	s.display_name, s.total_output_tokens, s.peak_context_tokens,
 	ifNull(glc.commit_count, 0) AS commit_count`
 
 // sessionGitLinkJoin is the LEFT JOIN fragment that provides per-session commit counts.
@@ -220,6 +227,10 @@ type messageRow struct {
 	HasThinking   bool       `ch:"has_thinking"`
 	HasToolUse    bool       `ch:"has_tool_use"`
 	ContentLength uint32     `ch:"content_length"`
+	Model         string     `ch:"model"`
+	TokenUsage    string     `ch:"token_usage"`
+	ContextTokens uint32     `ch:"context_tokens"`
+	OutputTokens  uint32     `ch:"output_tokens"`
 }
 
 // GetSessionMessages returns all messages for a session ordered by ordinal ASC.
@@ -227,7 +238,8 @@ func (s *ClickHouseStore) GetSessionMessages(ctx context.Context, orgID string, 
 	var rows []messageRow
 	err := s.conn.Select(ctx, &rows,
 		`SELECT org_id, session_id, ordinal, role, content,
-		timestamp, has_thinking, has_tool_use, content_length
+		timestamp, has_thinking, has_tool_use, content_length,
+		model, token_usage, context_tokens, output_tokens
 		FROM messages FINAL
 		WHERE org_id = ? AND session_id = ?
 		ORDER BY ordinal ASC`,
@@ -248,6 +260,10 @@ func (s *ClickHouseStore) GetSessionMessages(ctx context.Context, orgID string, 
 			HasThinking:   r.HasThinking,
 			HasToolUse:    r.HasToolUse,
 			ContentLength: int(r.ContentLength),
+			Model:         r.Model,
+			TokenUsage:    r.TokenUsage,
+			ContextTokens: int(r.ContextTokens),
+			OutputTokens:  int(r.OutputTokens),
 		})
 	}
 	return messages, nil
@@ -493,6 +509,124 @@ func (s *ClickHouseStore) GetSessionGitLinks(ctx context.Context, orgID string, 
 		})
 	}
 	return links, nil
+}
+
+// sessionStarRow is the scan target for session star queries.
+type sessionStarRow struct {
+	SessionID string    `ch:"session_id"`
+	UserID    string    `ch:"user_id"`
+	CreatedAt time.Time `ch:"created_at"`
+}
+
+// ListSessionStars returns all stars for a session, or all stars for the org if sessionID is empty.
+func (s *ClickHouseStore) ListSessionStars(ctx context.Context, orgID string, sessionID string) ([]SessionStar, error) {
+	var where []string
+	var args []interface{}
+
+	where = append(where, "org_id = ?")
+	args = append(args, orgID)
+	if sessionID != "" {
+		where = append(where, "session_id = ?")
+		args = append(args, sessionID)
+	}
+
+	q := fmt.Sprintf(`SELECT session_id, user_id, created_at
+		FROM session_stars FINAL
+		%s
+		ORDER BY created_at DESC`, chWhereClause(where))
+
+	var rows []sessionStarRow
+	if err := s.conn.Select(ctx, &rows, q, args...); err != nil {
+		return nil, fmt.Errorf("list session stars: %w", err)
+	}
+
+	stars := make([]SessionStar, 0, len(rows))
+	for _, r := range rows {
+		stars = append(stars, SessionStar{
+			OrgID:     orgID,
+			SessionID: r.SessionID,
+			UserID:    r.UserID,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+	return stars, nil
+}
+
+// messagePinRow is the scan target for message pin queries.
+type messagePinRow struct {
+	SessionID      string    `ch:"session_id"`
+	MessageOrdinal uint32    `ch:"message_ordinal"`
+	UserID         string    `ch:"user_id"`
+	Note           string    `ch:"note"`
+	CreatedAt      time.Time `ch:"created_at"`
+}
+
+// ListMessagePins returns all pins for a session, or all pins for the org if sessionID is empty.
+func (s *ClickHouseStore) ListMessagePins(ctx context.Context, orgID string, sessionID string) ([]MessagePin, error) {
+	var where []string
+	var args []interface{}
+
+	where = append(where, "org_id = ?")
+	args = append(args, orgID)
+	if sessionID != "" {
+		where = append(where, "session_id = ?")
+		args = append(args, sessionID)
+	}
+
+	q := fmt.Sprintf(`SELECT session_id, message_ordinal, user_id, note, created_at
+		FROM message_pins FINAL
+		%s
+		ORDER BY message_ordinal ASC, created_at DESC`, chWhereClause(where))
+
+	var rows []messagePinRow
+	if err := s.conn.Select(ctx, &rows, q, args...); err != nil {
+		return nil, fmt.Errorf("list message pins: %w", err)
+	}
+
+	pins := make([]MessagePin, 0, len(rows))
+	for _, r := range rows {
+		pins = append(pins, MessagePin{
+			OrgID:          orgID,
+			SessionID:      r.SessionID,
+			MessageOrdinal: int(r.MessageOrdinal),
+			UserID:         r.UserID,
+			Note:           r.Note,
+			CreatedAt:      r.CreatedAt,
+		})
+	}
+	return pins, nil
+}
+
+// sessionDeleteRow is the scan target for session delete queries.
+type sessionDeleteRow struct {
+	SessionID string    `ch:"session_id"`
+	UserID    string    `ch:"user_id"`
+	CreatedAt time.Time `ch:"created_at"`
+}
+
+// ListSessionDeletes returns all deleted session records for the org.
+func (s *ClickHouseStore) ListSessionDeletes(ctx context.Context, orgID string) ([]SessionDelete, error) {
+	var rows []sessionDeleteRow
+	err := s.conn.Select(ctx, &rows,
+		`SELECT session_id, user_id, created_at
+		FROM session_deletes FINAL
+		WHERE org_id = ?
+		ORDER BY created_at DESC`,
+		orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list session deletes: %w", err)
+	}
+
+	deletes := make([]SessionDelete, 0, len(rows))
+	for _, r := range rows {
+		deletes = append(deletes, SessionDelete{
+			OrgID:     orgID,
+			SessionID: r.SessionID,
+			UserID:    r.UserID,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+	return deletes, nil
 }
 
 // chWhereClause joins conditions with AND and prepends WHERE, or returns empty string.

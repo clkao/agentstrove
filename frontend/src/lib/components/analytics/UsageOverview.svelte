@@ -1,7 +1,8 @@
-<!-- ABOUTME: Session and message count bar charts grouped by developer. -->
+<!-- ABOUTME: Session, message, commit, and token count bar charts grouped by developer. -->
 <!-- ABOUTME: Stacked bars color-coded by agent type with a legend. -->
 <script lang="ts">
   import { analytics } from "../../stores/analytics.svelte.js";
+  import { formatTokenCount } from "../../utils/format.js";
   import BarChart from "./BarChart.svelte";
 
   const agentColors: Record<string, string> = {};
@@ -115,6 +116,35 @@
     return bars.sort((a, b) => b.total - a.total);
   });
 
+  const hasTokens = $derived(analytics.usage.some(u => u.total_output_tokens > 0));
+
+  const tokenBars = $derived.by(() => {
+    const byUser = new Map<string, { name: string; agents: Map<string, number> }>();
+    for (const u of analytics.usage) {
+      if (!byUser.has(u.user_id)) {
+        byUser.set(u.user_id, { name: u.user_name || u.user_id, agents: new Map() });
+      }
+      const entry = byUser.get(u.user_id)!;
+      entry.agents.set(u.agent_type, (entry.agents.get(u.agent_type) || 0) + u.total_output_tokens);
+    }
+
+    const allAgents = [...new Set(analytics.usage.map(u => u.agent_type))].sort();
+
+    const bars: BarData[] = [];
+    for (const [, user] of byUser) {
+      const segments = allAgents.map(agent => ({
+        value: user.agents.get(agent) || 0,
+        color: getAgentColor(agent),
+        label: agent || "(unknown)",
+      }));
+      const total = segments.reduce((s, seg) => s + seg.value, 0);
+      if (total > 0) {
+        bars.push({ label: user.name, segments, total });
+      }
+    }
+    return bars.sort((a, b) => b.total - a.total);
+  });
+
   const agentLegend = $derived([...new Set(analytics.usage.map(u => u.agent_type))].sort());
 </script>
 
@@ -123,7 +153,7 @@
   {#if analytics.usage.length === 0}
     <div class="empty">No usage data for this period</div>
   {:else}
-    <div class="charts" class:three-col={hasCommits}>
+    <div class="charts" class:three-col={(hasCommits || hasTokens) && !(hasCommits && hasTokens)} class:four-col={hasCommits && hasTokens}>
       <div class="chart-section">
         <h3>Sessions</h3>
         <BarChart data={sessionBars} />
@@ -136,6 +166,12 @@
         <div class="chart-section">
           <h3>Commits</h3>
           <BarChart data={commitBars} />
+        </div>
+      {/if}
+      {#if hasTokens}
+        <div class="chart-section">
+          <h3>Output Tokens</h3>
+          <BarChart data={tokenBars} formatValue={formatTokenCount} />
         </div>
       {/if}
     </div>
@@ -184,6 +220,10 @@
     grid-template-columns: 1fr 1fr 1fr;
   }
 
+  .charts.four-col {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+
   .empty {
     padding: 20px;
     text-align: center;
@@ -213,6 +253,12 @@
     flex-shrink: 0;
   }
 
+  @media (max-width: 1100px) {
+    .charts.four-col {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
   @media (max-width: 900px) {
     .charts.three-col {
       grid-template-columns: 1fr 1fr;
@@ -221,7 +267,8 @@
 
   @media (max-width: 700px) {
     .charts,
-    .charts.three-col {
+    .charts.three-col,
+    .charts.four-col {
       grid-template-columns: 1fr;
     }
   }

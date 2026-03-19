@@ -19,7 +19,7 @@ import (
 
 // SyncVersion is incremented when the sync logic changes in a way that requires
 // a full re-sync of all sessions.
-const SyncVersion = 3
+const SyncVersion = 4
 
 const syncChunkSize = 50
 
@@ -103,6 +103,9 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 	log.Printf("sync: %d changed, %d unchanged out of %d sessions", len(changed), result.SessionsSkipped, len(sessions))
 
 	if len(changed) == 0 {
+		if err := e.syncUserActions(ctx); err != nil {
+			log.Printf("sync: user actions: %v", err)
+		}
 		if err := e.state.Save(e.statePath); err != nil {
 			return result, fmt.Errorf("save sync state: %w", err)
 		}
@@ -130,6 +133,10 @@ func (e *Engine) RunOnce(ctx context.Context) (*SyncResult, error) {
 		}
 
 		log.Printf("sync: %d/%d sessions synced", result.SessionsSynced, len(changed))
+	}
+
+	if err := e.syncUserActions(ctx); err != nil {
+		log.Printf("sync: user actions: %v", err)
 	}
 
 	return result, nil
@@ -254,6 +261,9 @@ func (e *Engine) prepareSession(sess reader.Session, userID, userName string, pr
 		UserMessageCount: sess.UserMessageCount,
 		ParentSessionID:  sess.ParentSessionID,
 		RelationshipType: sess.RelationshipType,
+		DisplayName:      sanitizeUTF8(sess.DisplayName),
+		TotalOutputTokens: sess.TotalOutputTokens,
+		PeakContextTokens: sess.PeakContextTokens,
 		SourceCreatedAt:  sess.CreatedAt,
 	}
 
@@ -273,6 +283,10 @@ func (e *Engine) prepareSession(sess reader.Session, userID, userName string, pr
 			HasThinking:   m.HasThinking,
 			HasToolUse:    m.HasToolUse,
 			ContentLength: m.ContentLength,
+			Model:         sanitizeUTF8(m.Model),
+			TokenUsage:    sanitizeUTF8(m.TokenUsage),
+			ContextTokens: m.ContextTokens,
+			OutputTokens:  m.OutputTokens,
 		}
 	}
 
@@ -328,6 +342,78 @@ func (e *Engine) prepareSession(sess reader.Session, userID, userName string, pr
 	}
 }
 
+// syncUserActions reads stars, pins, and deleted sessions from the reader and
+// writes them to the store. This is a full-replace sync each cycle.
+func (e *Engine) syncUserActions(ctx context.Context) error {
+	userID, _ := e.config.ResolvedUserIdentity()
+
+	// Stars
+	starIDs, err := e.reader.ReadStarredSessionIDs()
+	if err != nil {
+		return fmt.Errorf("read starred sessions: %w", err)
+	}
+	if len(starIDs) > 0 {
+		now := time.Now().UTC()
+		stars := make([]store.SessionStar, len(starIDs))
+		for i, id := range starIDs {
+			stars[i] = store.SessionStar{
+				SessionID: id,
+				UserID:    userID,
+				CreatedAt: now,
+			}
+		}
+		if err := e.store.WriteSessionStars(ctx, "", stars); err != nil {
+			return fmt.Errorf("write session stars: %w", err)
+		}
+		log.Printf("sync: %d starred sessions", len(stars))
+	}
+
+	// Pins
+	readerPins, err := e.reader.ReadPinnedMessages()
+	if err != nil {
+		return fmt.Errorf("read pinned messages: %w", err)
+	}
+	if len(readerPins) > 0 {
+		pins := make([]store.MessagePin, len(readerPins))
+		for i, p := range readerPins {
+			pins[i] = store.MessagePin{
+				SessionID:      p.SessionID,
+				MessageOrdinal: p.MessageOrdinal,
+				UserID:         userID,
+				Note:           sanitizeUTF8(p.Note),
+				CreatedAt:      parseTimestampOrNow(p.CreatedAt),
+			}
+		}
+		if err := e.store.WriteMessagePins(ctx, "", pins); err != nil {
+			return fmt.Errorf("write message pins: %w", err)
+		}
+		log.Printf("sync: %d pinned messages", len(pins))
+	}
+
+	// Deletes
+	deleteIDs, err := e.reader.ReadDeletedSessionIDs()
+	if err != nil {
+		return fmt.Errorf("read deleted sessions: %w", err)
+	}
+	if len(deleteIDs) > 0 {
+		now := time.Now().UTC()
+		deletes := make([]store.SessionDelete, len(deleteIDs))
+		for i, id := range deleteIDs {
+			deletes[i] = store.SessionDelete{
+				SessionID: id,
+				UserID:    userID,
+				CreatedAt: now,
+			}
+		}
+		if err := e.store.WriteSessionDeletes(ctx, "", deletes); err != nil {
+			return fmt.Errorf("write session deletes: %w", err)
+		}
+		log.Printf("sync: %d deleted sessions", len(deletes))
+	}
+
+	return nil
+}
+
 // sanitizeUTF8 replaces invalid UTF-8 sequences with the Unicode replacement character.
 // ClickHouse String columns require valid UTF-8.
 func sanitizeUTF8(s string) string {
@@ -349,4 +435,12 @@ func parseTimestamp(s string) *time.Time {
 		}
 	}
 	return nil
+}
+
+// parseTimestampOrNow converts an ISO 8601 string to time.Time, falling back to now.
+func parseTimestampOrNow(s string) time.Time {
+	if t := parseTimestamp(s); t != nil {
+		return *t
+	}
+	return time.Now().UTC()
 }

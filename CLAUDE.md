@@ -108,11 +108,15 @@ Without `GOARCH=arm64`, gcc fails with `-m64` error. Pure Go tests (`CGO_ENABLED
 
 ```bash
 make build          # Frontend + Go binary
+make lint           # golangci-lint + frontend vitest (matches CI)
 make test           # go test ./internal/... (unit tests — reader, secrets, gitlinks need no ClickHouse)
 make test-store     # go test ./internal/store/... (needs ClickHouse)
 make test-e2e       # go test ./e2e/... (needs ClickHouse)
 make test-all       # All tests
+make check          # lint + test-all (run before PRs)
 ```
+
+**Before creating a PR**, always run `make lint` to catch what CI will flag. CI runs `golangci-lint v2.10.1` with default config (staticcheck, errcheck, etc).
 
 See [docs/testing.md](docs/testing.md) for the full E2E test plan, dogfood sync workflow, and test infrastructure details.
 

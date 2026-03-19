@@ -475,6 +475,121 @@ func TestSPAFallback(t *testing.T) {
 	assert.NotEqual(t, http.StatusInternalServerError, resp.StatusCode)
 }
 
+func TestGetSessionStars_WithData(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	ctx := context.Background()
+	stars := []store.SessionStar{
+		{OrgID: "", SessionID: "sess-1", UserID: "alice@example.com", CreatedAt: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)},
+	}
+	require.NoError(t, s.WriteSessionStars(ctx, "", stars))
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/stars")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.SessionStar
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 1)
+	assert.Equal(t, "sess-1", result[0].SessionID)
+	assert.Equal(t, "alice@example.com", result[0].UserID)
+}
+
+func TestGetSessionStars_Empty(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/stars")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.SessionStar
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 0)
+}
+
+func TestGetSessionPins_WithData(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	ctx := context.Background()
+	pins := []store.MessagePin{
+		{OrgID: "", SessionID: "sess-1", MessageOrdinal: 1, UserID: "alice@example.com", Note: "important", CreatedAt: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)},
+	}
+	require.NoError(t, s.WriteMessagePins(ctx, "", pins))
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/pins")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.MessagePin
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 1)
+	assert.Equal(t, "sess-1", result[0].SessionID)
+	assert.Equal(t, 1, result[0].MessageOrdinal)
+	assert.Equal(t, "important", result[0].Note)
+}
+
+func TestGetSessionPins_Empty(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/sessions/sess-1/pins")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.MessagePin
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 0)
+}
+
+func TestListSessionDeletes_WithData(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	ctx := context.Background()
+	deletes := []store.SessionDelete{
+		{OrgID: "", SessionID: "sess-2", UserID: "bob@example.com", CreatedAt: time.Date(2026, 3, 2, 15, 0, 0, 0, time.UTC)},
+	}
+	require.NoError(t, s.WriteSessionDeletes(ctx, "", deletes))
+
+	resp, err := http.Get(ts.URL + "/api/v1/session-deletes")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.SessionDelete
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 1)
+	assert.Equal(t, "sess-2", result[0].SessionID)
+	assert.Equal(t, "bob@example.com", result[0].UserID)
+}
+
+func TestListSessionDeletes_Empty(t *testing.T) {
+	ts, s := setupTestAPI(t)
+	seedAPITestData(t, s)
+
+	resp, err := http.Get(ts.URL + "/api/v1/session-deletes")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result []store.SessionDelete
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Len(t, result, 0)
+}
+
 func TestCORSHeaders(t *testing.T) {
 	ts, _ := setupTestAPI(t)
 

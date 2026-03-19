@@ -1,5 +1,5 @@
 // ABOUTME: Analytics query methods for team-level usage insights.
-// ABOUTME: Implements UsageByUser, ActivityHeatmap, ToolUsageDistribution, and DailyActivity on ClickHouseStore.
+// ABOUTME: Implements UsageByUser, ActivityHeatmap, ToolUsageDistribution, DailyActivity, and TokenUsageByModel on ClickHouseStore.
 
 package store
 
@@ -11,13 +11,15 @@ import (
 
 // userUsageRow is the scan target for UsageByUser queries.
 type userUsageRow struct {
-	UserID        string `ch:"user_id"`
-	UserName      string `ch:"user_name"`
-	AgentType     string `ch:"agent_type"`
-	ProjectName   string `ch:"project_name"`
-	SessionCount  uint64 `ch:"session_count"`
-	TotalMessages uint64 `ch:"total_messages"`
-	CommitCount   uint64 `ch:"commit_count"`
+	UserID            string `ch:"user_id"`
+	UserName          string `ch:"user_name"`
+	AgentType         string `ch:"agent_type"`
+	ProjectName       string `ch:"project_name"`
+	SessionCount      uint64 `ch:"session_count"`
+	TotalMessages     uint64 `ch:"total_messages"`
+	CommitCount       uint64 `ch:"commit_count"`
+	TotalOutputTokens int64  `ch:"total_output_tokens"`
+	PeakContextTokens int32  `ch:"peak_context_tokens"`
 }
 
 // UsageByUser returns per-user/agent/project session, message, and commit counts.
@@ -47,7 +49,9 @@ func (s *ClickHouseStore) UsageByUser(ctx context.Context, orgID string, project
 	q := fmt.Sprintf(`SELECT s.user_id, s.user_name, s.agent_type, s.project_name,
 		count() AS session_count,
 		sum(s.message_count) AS total_messages,
-		sum(ifNull(glc.commit_count, 0)) AS commit_count
+		sum(ifNull(glc.commit_count, 0)) AS commit_count,
+		toInt64(sum(s.total_output_tokens)) AS total_output_tokens,
+		toInt32(max(s.peak_context_tokens)) AS peak_context_tokens
 		FROM sessions AS s FINAL
 		%s
 		%s
@@ -66,13 +70,15 @@ func (s *ClickHouseStore) UsageByUser(ctx context.Context, orgID string, project
 	results := make([]UserUsage, 0, len(rows))
 	for _, r := range rows {
 		results = append(results, UserUsage{
-			UserID:       r.UserID,
-			UserName:     r.UserName,
-			AgentType:    r.AgentType,
-			ProjectName:  r.ProjectName,
-			SessionCount: int(r.SessionCount),
-			MessageCount: int(r.TotalMessages),
-			CommitCount:  int(r.CommitCount),
+			UserID:            r.UserID,
+			UserName:          r.UserName,
+			AgentType:         r.AgentType,
+			ProjectName:       r.ProjectName,
+			SessionCount:      int(r.SessionCount),
+			MessageCount:      int(r.TotalMessages),
+			CommitCount:       int(r.CommitCount),
+			TotalOutputTokens: r.TotalOutputTokens,
+			PeakContextTokens: int(r.PeakContextTokens),
 		})
 	}
 	return results, nil
@@ -190,12 +196,13 @@ func (s *ClickHouseStore) ToolUsageDistribution(ctx context.Context, orgID strin
 
 // dailyActivityRow is the scan target for DailyActivity queries.
 type dailyActivityRow struct {
-	Date          time.Time `ch:"date"`
-	SessionCount  uint64    `ch:"session_count"`
-	TotalMessages uint64    `ch:"total_messages"`
+	Date              time.Time `ch:"date"`
+	SessionCount      uint64    `ch:"session_count"`
+	TotalMessages     uint64    `ch:"total_messages"`
+	TotalOutputTokens int64     `ch:"total_output_tokens"`
 }
 
-// DailyActivity returns per-day session and message counts.
+// DailyActivity returns per-day session counts, message counts, and token totals.
 func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]DailyActivity, error) {
 	var conditions []string
 	var args []interface{}
@@ -221,7 +228,8 @@ func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, proje
 
 	q := fmt.Sprintf(`SELECT toDate(s.started_at) AS date,
 		count() AS session_count,
-		sum(s.message_count) AS total_messages
+		sum(s.message_count) AS total_messages,
+		toInt64(sum(s.total_output_tokens)) AS total_output_tokens
 		FROM sessions AS s FINAL
 		%s
 		GROUP BY date
@@ -235,10 +243,68 @@ func (s *ClickHouseStore) DailyActivity(ctx context.Context, orgID string, proje
 	results := make([]DailyActivity, 0, len(rows))
 	for _, r := range rows {
 		results = append(results, DailyActivity{
-			Date:         r.Date.Format("2006-01-02"),
-			SessionCount: int(r.SessionCount),
-			MessageCount: int(r.TotalMessages),
+			Date:              r.Date.Format("2006-01-02"),
+			SessionCount:      int(r.SessionCount),
+			MessageCount:      int(r.TotalMessages),
+			TotalOutputTokens: r.TotalOutputTokens,
 		})
+	}
+	return results, nil
+}
+
+// modelTokenUsageRow is the scan target for TokenUsageByModel queries.
+type modelTokenUsageRow struct {
+	Model         string `ch:"model"`
+	OutputTokens  int64  `ch:"output_tokens"`
+	ContextTokens int64  `ch:"context_tokens"`
+	MessageCount  int64  `ch:"message_count"`
+}
+
+// TokenUsageByModel returns per-model token usage aggregated from messages.
+func (s *ClickHouseStore) TokenUsageByModel(ctx context.Context, orgID string, projectName string, dateFrom, dateTo string) ([]ModelTokenUsage, error) {
+	var conditions []string
+	var args []interface{}
+
+	conditions = append(conditions, "m.org_id = ?")
+	args = append(args, orgID)
+	conditions = append(conditions, "m.model != ''")
+	conditions = append(conditions, "m.output_tokens > 0")
+	conditions = append(conditions, "s.parent_session_id = ''")
+	conditions = append(conditions, "s.user_message_count > 0")
+
+	if projectName != "" {
+		conditions = append(conditions, "s.project_name = ?")
+		args = append(args, projectName)
+	}
+
+	if dateFrom != "" {
+		conditions = append(conditions, "s.started_at >= ?")
+		args = append(args, dateFrom)
+	}
+	if dateTo != "" {
+		conditions = append(conditions, "s.started_at < toDate(?) + 1")
+		args = append(args, dateTo)
+	}
+
+	q := fmt.Sprintf(`SELECT m.model AS model,
+		toInt64(sum(m.output_tokens)) AS output_tokens,
+		toInt64(sum(m.context_tokens)) AS context_tokens,
+		toInt64(count()) AS message_count
+		FROM messages AS m FINAL
+		INNER JOIN sessions AS s FINAL ON m.org_id = s.org_id AND m.session_id = s.id
+		%s
+		GROUP BY m.model
+		ORDER BY output_tokens DESC
+		LIMIT 20`, chWhereClause(conditions))
+
+	var rows []modelTokenUsageRow
+	if err := s.conn.Select(ctx, &rows, q, args...); err != nil {
+		return nil, fmt.Errorf("token usage by model: %w", err)
+	}
+
+	results := make([]ModelTokenUsage, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, ModelTokenUsage(r))
 	}
 	return results, nil
 }

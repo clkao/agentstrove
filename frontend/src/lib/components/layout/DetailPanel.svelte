@@ -5,7 +5,7 @@
   import { getSessionGitLinks } from "../../api/client.js";
   import { sessions } from "../../stores/sessions.svelte.js";
   import { messages } from "../../stores/messages.svelte.js";
-  import { formatTimestamp, formatAgentName, formatNumber } from "../../utils/format.js";
+  import { formatTimestamp, formatAgentName, formatNumber, formatTokenCount } from "../../utils/format.js";
   import MessageList from "../content/MessageList.svelte";
 
   let highlightOrdinal = $state<number | null>(null);
@@ -60,6 +60,7 @@
   {#if sessions.activeSession}
     {@const s = sessions.activeSession}
     <header class="session-header">
+      <div class="session-title">{s.display_name || s.first_message || s.id}</div>
       <div class="session-meta">
         <span class="meta-item" title="User">{s.user_name}</span>
         <span class="meta-sep"></span>
@@ -73,6 +74,12 @@
         <span class="meta-item" title="Ended">{formatTimestamp(s.ended_at)}</span>
         <span class="meta-sep"></span>
         <span class="meta-item" title="Messages">{formatNumber(s.message_count)} messages</span>
+        {#if s.peak_context_tokens > 0 || s.total_output_tokens > 0}
+          <span class="meta-sep"></span>
+          <span class="meta-item token-usage" title="Peak context: {s.peak_context_tokens.toLocaleString()} · Output: {s.total_output_tokens.toLocaleString()}">
+            {#if s.peak_context_tokens > 0}ctx: {formatTokenCount(s.peak_context_tokens)}{/if}{#if s.peak_context_tokens > 0 && s.total_output_tokens > 0} · {/if}{#if s.total_output_tokens > 0}out: {formatTokenCount(s.total_output_tokens)}{/if}
+          </span>
+        {/if}
         {#if s.commit_count > 0}
           <span class="meta-sep"></span>
           <span class="gitlinks-container">
@@ -135,6 +142,16 @@
     background: var(--bg-surface);
   }
 
+  .session-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .session-meta {
     display: flex;
     align-items: center;
@@ -147,6 +164,16 @@
   .meta-sep::after {
     content: "\00b7";
     color: var(--text-muted);
+  }
+
+  .token-usage {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-blue) 15%, transparent);
+    color: var(--accent-blue);
+    border: 1px solid color-mix(in srgb, var(--accent-blue) 30%, transparent);
+    font-weight: 500;
   }
 
   .gitlinks-container {
