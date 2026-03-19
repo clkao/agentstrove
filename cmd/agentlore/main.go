@@ -127,7 +127,7 @@ func clickhouseAddr(cfg *config.Config) string {
 	if cfg.ClickHouseAddr != "" {
 		return cfg.ClickHouseAddr
 	}
-	return "localhost:9000"
+	return "localhost:9440"
 }
 
 func clickhouseDatabase(cfg *config.Config) string {

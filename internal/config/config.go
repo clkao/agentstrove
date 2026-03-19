@@ -4,6 +4,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,22 +55,52 @@ func DefaultDataDir() string {
 
 // Load reads configuration from a JSON file at the given path.
 // Returns sensible defaults when the file does not exist.
+// Environment variables override JSON values when set.
 func Load(path string) (*Config, error) {
 	cfg := &Config{}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return cfg, nil
+		if !os.IsNotExist(err) {
+			return nil, err
 		}
-		return nil, err
+	} else {
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, err
+		}
 	}
 
-	if err := json.Unmarshal(data, cfg); err != nil {
-		return nil, err
-	}
-
+	applyEnvOverrides(cfg)
 	return cfg, nil
+}
+
+// applyEnvOverrides sets config fields from environment variables.
+// Env vars take precedence over JSON config values.
+func applyEnvOverrides(cfg *Config) {
+	if v := os.Getenv("CLICKHOUSE_ADDR"); v != "" {
+		cfg.ClickHouseAddr = v
+	}
+	if v := os.Getenv("CLICKHOUSE_DATABASE"); v != "" {
+		cfg.ClickHouseDatabase = v
+	}
+	if v := os.Getenv("CLICKHOUSE_USER"); v != "" {
+		cfg.ClickHouseUser = v
+	}
+	if v := os.Getenv("CLICKHOUSE_PASSWORD"); v != "" {
+		cfg.ClickHousePassword = v
+	}
+	if v := os.Getenv("AGENTSVIEW_DB_PATH"); v != "" {
+		cfg.AgentsviewDBPath = v
+	}
+	if v := os.Getenv("AGENTLORE_DATA_DIR"); v != "" {
+		cfg.DataDir = v
+	}
+	if v := os.Getenv("SERVER_PORT"); v != "" {
+		var port int
+		if _, err := fmt.Sscanf(v, "%d", &port); err == nil {
+			cfg.ServerPort = port
+		}
+	}
 }
 
 // DetectUserIdentity runs git config to auto-detect the user's name and email.
